@@ -7441,5 +7441,194 @@ HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_GetUIExtensionRootHostInfoBy
     EXPECT_EQ(reply.ReadString(), "entry");
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerStub_GetUIExtensionRootHostInfoByIdInner_0100 end");
 }
+
+/*
+ * Feature: AbilityManagerStub
+ * Name: ExecuteUIAbilityForegroundIntentWithSpecifyTokenIdInner_0100
+ * Function: ExecuteUIAbilityForegroundIntentWithSpecifyTokenIdInner
+ * SubFunction: NA
+ * FunctionPoints: dispatch a valid foreground intent request and write back the result
+ */
+HWTEST_F(AbilityManagerStubTest,
+    AbilityManagerStub_ExecuteUIAbilityForegroundIntentWithSpecifyTokenIdInner_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteUIAbilityForegroundIntentWithSpecifyTokenIdInner_0100 start");
+    MessageParcel data;
+    WriteInterfaceToken(data);
+    Want want;
+    want.SetElementName("", "com.test.bundle", "MainAbility", "entry");
+    ASSERT_TRUE(data.WriteParcelable(&want));
+    auto token = sptr<AppExecFwk::MockAbilityToken>::MakeSptr();
+    ASSERT_TRUE(data.WriteRemoteObject(token));
+    AppExecFwk::InsightIntentExecuteLiteParam param;
+    param.key = 100;
+    param.insightIntentName = "test.intent";
+    ASSERT_TRUE(data.WriteParcelable(&param));
+    ASSERT_TRUE(data.WriteUint64(456));
+
+    MessageParcel reply;
+    MessageOption option;
+    EXPECT_CALL(*stub_, ExecuteUIAbilityForegroundIntentWithSpecifyTokenId(_, _, _, 456))
+        .Times(1).WillOnce(Return(ERR_OK));
+    int res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::EXECUTE_INTENT_WITH_SPECIFY_TOKEN_ID),
+        data, reply, option);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteUIAbilityForegroundIntentWithSpecifyTokenIdInner_0100 end");
+}
+
+/*
+ * Feature: AbilityManagerStub
+ * Name: ExecuteUIAbilityForegroundIntentWithSpecifyTokenIdInner_0200
+ * Function: ExecuteUIAbilityForegroundIntentWithSpecifyTokenIdInner
+ * SubFunction: NA
+ * FunctionPoints: reject a request without a want parcelable
+ */
+HWTEST_F(AbilityManagerStubTest,
+    AbilityManagerStub_ExecuteUIAbilityForegroundIntentWithSpecifyTokenIdInner_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteUIAbilityForegroundIntentWithSpecifyTokenIdInner_0200 start");
+    MessageParcel data;
+    WriteInterfaceToken(data);
+    MessageParcel reply;
+    MessageOption option;
+    EXPECT_CALL(*stub_, ExecuteUIAbilityForegroundIntentWithSpecifyTokenId(_, _, _, _)).Times(0);
+    int res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::EXECUTE_INTENT_WITH_SPECIFY_TOKEN_ID),
+        data, reply, option);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteUIAbilityForegroundIntentWithSpecifyTokenIdInner_0200 end");
+}
+
+/*
+ * Feature: AbilityManagerStub
+ * Name: ExecuteUIAbilityForegroundIntentWithSpecifyTokenIdInner_0300
+ * Function: ExecuteUIAbilityForegroundIntentWithSpecifyTokenIdInner
+ * SubFunction: NA
+ * FunctionPoints: reject a request without a lite param parcelable
+ */
+HWTEST_F(AbilityManagerStubTest,
+    AbilityManagerStub_ExecuteUIAbilityForegroundIntentWithSpecifyTokenIdInner_0300, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteUIAbilityForegroundIntentWithSpecifyTokenIdInner_0300 start");
+    MessageParcel data;
+    WriteInterfaceToken(data);
+    Want want;
+    want.SetElementName("", "com.test.bundle", "MainAbility", "entry");
+    ASSERT_TRUE(data.WriteParcelable(&want));
+    auto token = sptr<AppExecFwk::MockAbilityToken>::MakeSptr();
+    ASSERT_TRUE(data.WriteRemoteObject(token));
+
+    MessageParcel reply;
+    MessageOption option;
+    EXPECT_CALL(*stub_, ExecuteUIAbilityForegroundIntentWithSpecifyTokenId(_, _, _, _)).Times(0);
+    int res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::EXECUTE_INTENT_WITH_SPECIFY_TOKEN_ID),
+        data, reply, option);
+    EXPECT_EQ(res, ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "ExecuteUIAbilityForegroundIntentWithSpecifyTokenIdInner_0300 end");
+}
+
+/*
+ * Feature: AbilityManagerStub
+ * Name: NotifyInsightIntentExecuteInner_0100
+ * Function: NotifyInsightIntentExecuteInner
+ * SubFunction: NA
+ * FunctionPoints: forward the intent id and write back the service result
+ */
+HWTEST_F(AbilityManagerStubTest, AbilityManagerStub_NotifyInsightIntentExecuteInner_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerStub_NotifyInsightIntentExecuteInner_0100 start");
+    MessageParcel data;
+    WriteInterfaceToken(data);
+    ASSERT_TRUE(data.WriteUint64(789));
+    MessageParcel reply;
+    MessageOption option;
+    EXPECT_CALL(*stub_, NotifyInsightIntentExecute(789)).Times(1).WillOnce(Return(ERR_PERMISSION_DENIED));
+    int res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::NOTIFY_INSIGHT_INTENT_EXECUTE),
+        data, reply, option);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_PERMISSION_DENIED);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerStub_NotifyInsightIntentExecuteInner_0100 end");
+}
+
+/*
+ * Feature: AbilityManagerStub
+ * Name: RegisterWillInsightIntentExecuteCallbackInner_0100
+ * Function: RegisterWillInsightIntentExecuteCallbackInner
+ * SubFunction: NA
+ * FunctionPoints: forward the callback object and write back the service result
+ */
+HWTEST_F(AbilityManagerStubTest,
+    AbilityManagerStub_RegisterWillInsightIntentExecuteCallbackInner_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerStub_RegisterWillInsightIntentExecuteCallbackInner_0100 start");
+    MessageParcel data;
+    WriteInterfaceToken(data);
+    auto callback = sptr<AppExecFwk::MockAbilityToken>::MakeSptr();
+    ASSERT_TRUE(data.WriteRemoteObject(callback));
+    MessageParcel reply;
+    MessageOption option;
+    EXPECT_CALL(*stub_, RegisterWillInsightIntentExecuteCallback(_)).Times(1).WillOnce(Return(ERR_OK));
+    int res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::REGISTER_WILL_INSIGHT_INTENT_EXECUTE_CALLBACK),
+        data, reply, option);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "RegisterWillInsightIntentExecuteCallbackInner_0100 end");
+}
+
+/*
+ * Feature: AbilityManagerStub
+ * Name: RegisterWillInsightIntentExecuteCallbackInner_0200
+ * Function: RegisterWillInsightIntentExecuteCallbackInner
+ * SubFunction: NA
+ * FunctionPoints: propagate a service-side failure to the caller
+ */
+HWTEST_F(AbilityManagerStubTest,
+    AbilityManagerStub_RegisterWillInsightIntentExecuteCallbackInner_0200, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "RegisterWillInsightIntentExecuteCallbackInner_0200 start");
+    MessageParcel data;
+    WriteInterfaceToken(data);
+    auto callback = sptr<AppExecFwk::MockAbilityToken>::MakeSptr();
+    ASSERT_TRUE(data.WriteRemoteObject(callback));
+    MessageParcel reply;
+    MessageOption option;
+    EXPECT_CALL(*stub_, RegisterWillInsightIntentExecuteCallback(_))
+        .Times(1).WillOnce(Return(ERR_INVALID_VALUE));
+    int res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::REGISTER_WILL_INSIGHT_INTENT_EXECUTE_CALLBACK),
+        data, reply, option);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_INVALID_VALUE);
+    TAG_LOGI(AAFwkTag::TEST, "RegisterWillInsightIntentExecuteCallbackInner_0200 end");
+}
+
+/*
+ * Feature: AbilityManagerStub
+ * Name: UnregisterWillInsightIntentExecuteCallbackInner_0100
+ * Function: UnregisterWillInsightIntentExecuteCallbackInner
+ * SubFunction: NA
+ * FunctionPoints: dispatch the unregister request and write back the service result
+ */
+HWTEST_F(AbilityManagerStubTest,
+    AbilityManagerStub_UnregisterWillInsightIntentExecuteCallbackInner_0100, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "UnregisterWillInsightIntentExecuteCallbackInner_0100 start");
+    MessageParcel data;
+    WriteInterfaceToken(data);
+    MessageParcel reply;
+    MessageOption option;
+    EXPECT_CALL(*stub_, UnregisterWillInsightIntentExecuteCallback()).Times(1).WillOnce(Return(ERR_OK));
+    int res = stub_->OnRemoteRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::UNREGISTER_WILL_INSIGHT_INTENT_EXECUTE_CALLBACK),
+        data, reply, option);
+    EXPECT_EQ(res, NO_ERROR);
+    EXPECT_EQ(reply.ReadInt32(), ERR_OK);
+    TAG_LOGI(AAFwkTag::TEST, "UnregisterWillInsightIntentExecuteCallbackInner_0100 end");
+}
 } // namespace AAFwk
 } // namespace OHOS

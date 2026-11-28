@@ -500,6 +500,10 @@ public:
     MOCK_METHOD4(ExecuteUIAbilityForegroundIntentWithSpecifyTokenId,
     int32_t(const Want &want, const sptr<IRemoteObject> &callerAbilityToken,
         const InsightIntentExecuteLiteParam &param, uint64_t specifiedFullTokenId));
+    MOCK_METHOD1(NotifyInsightIntentExecute, int32_t(uint64_t intentId));
+    MOCK_METHOD1(RegisterWillInsightIntentExecuteCallback,
+        int32_t(const sptr<IRemoteObject> &callback));
+    MOCK_METHOD0(UnregisterWillInsightIntentExecuteCallback, int32_t());
     MOCK_METHOD3(ExecuteInsightIntentDone, int32_t(const sptr<IRemoteObject> &token, uint64_t intentId,
         const InsightIntentExecuteResult &result));
     MOCK_METHOD3(GetUIExtensionRootHostInfo, int32_t(const sptr<IRemoteObject> token, UIExtensionHostInfo &hostInfo,

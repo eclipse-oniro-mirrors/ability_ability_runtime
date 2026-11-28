@@ -252,6 +252,7 @@ ohos_unittest("ability_manager_service_fourteenth_test") {
     "../ability_manager_service_thirteenth_test/mock/src/mock_scene_board_judgement.cpp",
     "../ability_manager_service_thirteenth_test/mock/src/mock_sub_managers_helper.cpp",
     "../ability_manager_service_thirteenth_test/mock/src/mock_ui_ability_lifecycle_manager.cpp",
+    "mock/src/mock_bundle_mgr_helper.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/kiosk_status.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/kiosk_manager.cpp",
     "${ability_runtime_services_path}/abilitymgr/src/interceptor/kiosk_interceptor.cpp",

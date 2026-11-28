@@ -1747,6 +1747,23 @@ HWTEST_F(AbilityManagerClientBranchThirdTest, GetDynamicAgentCardsForMigration_0
 }
 
 /**
+ * @tc.name: ExecuteUIAbilityForegroundIntentWithSpecifyTokenId_0100
+ * @tc.desc: Test ExecuteUIAbilityForegroundIntentWithSpecifyTokenId with proxy not connected
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest,
+    ExecuteUIAbilityForegroundIntentWithSpecifyTokenId_0100, TestSize.Level1)
+{
+    ErrorTestBoardDisable();
+
+    Want want;
+    AppExecFwk::InsightIntentExecuteLiteParam param;
+    auto ret = client_->ExecuteUIAbilityForegroundIntentWithSpecifyTokenId(
+        want, nullptr, param, 0);
+    EXPECT_EQ(ret, ABILITY_SERVICE_NOT_CONNECTED);
+}
+
+/**
  * @tc.name: GetDynamicAgentCardsForMigration_0200
  * @tc.desc: Test GetDynamicAgentCardsForMigration with proxy connected and output returned
  * @tc.type: FUNC
@@ -1778,6 +1795,43 @@ HWTEST_F(AbilityManagerClientBranchThirdTest, GetDynamicAgentCardsForMigration_0
         .WillOnce(Return(ERR_INVALID_VALUE));
     auto ret = client_->GetDynamicAgentCardsForMigration(jsonStr);
     EXPECT_EQ(ret, ERR_INVALID_VALUE);
+}
+
+/**
+ * @tc.name: NotifyInsightIntentExecute_0100
+ * @tc.desc: Test NotifyInsightIntentExecute with proxy not connected
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, NotifyInsightIntentExecute_0100, TestSize.Level1)
+{
+    ErrorTestBoardDisable();
+
+    EXPECT_EQ(client_->NotifyInsightIntentExecute(123), ABILITY_SERVICE_NOT_CONNECTED);
+}
+
+/**
+ * @tc.name: RegisterWillInsightIntentExecuteCallback_0100
+ * @tc.desc: Test RegisterWillInsightIntentExecuteCallback with proxy not connected
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, RegisterWillInsightIntentExecuteCallback_0100, TestSize.Level1)
+{
+    ErrorTestBoardDisable();
+
+    EXPECT_EQ(client_->RegisterWillInsightIntentExecuteCallback(sptr<IRemoteObject>()),
+        ABILITY_SERVICE_NOT_CONNECTED);
+}
+
+/**
+ * @tc.name: UnregisterWillInsightIntentExecuteCallback_0100
+ * @tc.desc: Test UnregisterWillInsightIntentExecuteCallback with proxy not connected
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, UnregisterWillInsightIntentExecuteCallback_0100, TestSize.Level1)
+{
+    ErrorTestBoardDisable();
+
+    EXPECT_EQ(client_->UnregisterWillInsightIntentExecuteCallback(), ABILITY_SERVICE_NOT_CONNECTED);
 }
 
 }  // namespace AAFwk

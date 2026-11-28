@@ -47,6 +47,14 @@ const int USER_ID = 100;
 const size_t SIZE_ZERO = 0;
 const std::string BUNDLE_NAME = "BUNDLE_NAME";
 const std::string EMPTY_STRING = "";
+
+class BadInsightIntentExecuteLiteParam : public AppExecFwk::InsightIntentExecuteLiteParam {
+public:
+    bool Marshalling(Parcel &) const override
+    {
+        return false;
+    }
+};
 }  // namespace
 
 class AbilityManagerClientBranchTest : public testing::Test {
@@ -3507,6 +3515,207 @@ HWTEST_F(AbilityManagerClientBranchTest, AbilityManagerClient_GetInsightIntentCa
     std::string callerBundleName;
     EXPECT_EQ(client_->GetInsightIntentCallerBundleName(100, callerBundleName), ERR_OK);
     EXPECT_EQ(callerBundleName, "caller.bundle");
+}
+
+/**
+ * @tc.name: AbilityManagerClient_ExecuteUIAbilityForegroundIntentWithSpecifyTokenId_0100
+ * @tc.desc: forward the intent execution request and return the proxy result.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest,
+    AbilityManagerClient_ExecuteUIAbilityForegroundIntentWithSpecifyTokenId_0100, TestSize.Level1)
+{
+    client_->proxy_ = new AbilityManagerProxy(mock_);
+    EXPECT_CALL(*mock_, SendRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::EXECUTE_INTENT_WITH_SPECIFY_TOKEN_ID), _, _, _))
+        .WillOnce(Invoke([](uint32_t, MessageParcel &, MessageParcel &reply, MessageOption &) {
+            return reply.WriteInt32(ERR_OK) ? 0 : -1;
+        }));
+
+    Want want;
+    want.SetElementName("", "com.test.bundle", "MainAbility", "entry");
+    AppExecFwk::InsightIntentExecuteLiteParam param;
+    param.key = 100;
+    param.insightIntentName = "test.intent";
+    auto result = client_->ExecuteUIAbilityForegroundIntentWithSpecifyTokenId(
+        want, mock_->AsObject(), param, 123);
+    EXPECT_EQ(result, ERR_OK);
+}
+
+/**
+ * @tc.name: AbilityManagerClient_ExecuteUIAbilityForegroundIntentWithSpecifyTokenId_0200
+ * @tc.desc: a failed transport request is returned unchanged.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest,
+    AbilityManagerClient_ExecuteUIAbilityForegroundIntentWithSpecifyTokenId_0200, TestSize.Level1)
+{
+    client_->proxy_ = new AbilityManagerProxy(mock_);
+    EXPECT_CALL(*mock_, SendRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::EXECUTE_INTENT_WITH_SPECIFY_TOKEN_ID), _, _, _))
+        .WillOnce(Return(INNER_ERR));
+
+    Want want;
+    AppExecFwk::InsightIntentExecuteLiteParam param;
+    auto result = client_->ExecuteUIAbilityForegroundIntentWithSpecifyTokenId(
+        want, mock_->AsObject(), param, 0);
+    EXPECT_EQ(result, INNER_ERR);
+}
+
+/**
+ * @tc.name: AbilityManagerClient_ExecuteUIAbilityForegroundIntentWithSpecifyTokenId_0300
+ * @tc.desc: a null caller ability token is rejected before the transport request.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest,
+    AbilityManagerClient_ExecuteUIAbilityForegroundIntentWithSpecifyTokenId_0300, TestSize.Level1)
+{
+    client_->proxy_ = new AbilityManagerProxy(mock_);
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _)).Times(0);
+
+    Want want;
+    AppExecFwk::InsightIntentExecuteLiteParam param;
+    auto result = client_->ExecuteUIAbilityForegroundIntentWithSpecifyTokenId(
+        want, nullptr, param, 0);
+    EXPECT_EQ(result, INNER_ERR);
+}
+
+/**
+ * @tc.name: AbilityManagerClient_ExecuteUIAbilityForegroundIntentWithSpecifyTokenId_0400
+ * @tc.desc: a param that fails marshalling is rejected before the transport request.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest,
+    AbilityManagerClient_ExecuteUIAbilityForegroundIntentWithSpecifyTokenId_0400, TestSize.Level1)
+{
+    client_->proxy_ = new AbilityManagerProxy(mock_);
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _)).Times(0);
+
+    Want want;
+    BadInsightIntentExecuteLiteParam param;
+    auto result = client_->ExecuteUIAbilityForegroundIntentWithSpecifyTokenId(
+        want, mock_->AsObject(), param, 0);
+    EXPECT_EQ(result, INNER_ERR);
+}
+
+/**
+ * @tc.name: AbilityManagerClient_NotifyInsightIntentExecute_0100
+ * @tc.desc: forward the intent id and return the proxy result.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest,
+    AbilityManagerClient_NotifyInsightIntentExecute_0100, TestSize.Level1)
+{
+    client_->proxy_ = new AbilityManagerProxy(mock_);
+    EXPECT_CALL(*mock_, SendRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::NOTIFY_INSIGHT_INTENT_EXECUTE), _, _, _))
+        .WillOnce(Invoke([](uint32_t, MessageParcel &, MessageParcel &reply, MessageOption &) {
+            return reply.WriteInt32(ERR_OK) ? 0 : -1;
+        }));
+
+    EXPECT_EQ(client_->NotifyInsightIntentExecute(123), ERR_OK);
+}
+
+/**
+ * @tc.name: AbilityManagerClient_NotifyInsightIntentExecute_0200
+ * @tc.desc: a failed transport request is returned unchanged.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest,
+    AbilityManagerClient_NotifyInsightIntentExecute_0200, TestSize.Level1)
+{
+    client_->proxy_ = new AbilityManagerProxy(mock_);
+    EXPECT_CALL(*mock_, SendRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::NOTIFY_INSIGHT_INTENT_EXECUTE), _, _, _))
+        .WillOnce(Return(INNER_ERR));
+
+    EXPECT_EQ(client_->NotifyInsightIntentExecute(123), INNER_ERR);
+}
+
+/**
+ * @tc.name: AbilityManagerClient_RegisterWillInsightIntentExecuteCallback_0100
+ * @tc.desc: forward the callback and return the proxy result.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest,
+    AbilityManagerClient_RegisterWillInsightIntentExecuteCallback_0100, TestSize.Level1)
+{
+    client_->proxy_ = new AbilityManagerProxy(mock_);
+    EXPECT_CALL(*mock_, SendRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::REGISTER_WILL_INSIGHT_INTENT_EXECUTE_CALLBACK),
+        _, _, _))
+        .WillOnce(Invoke([](uint32_t, MessageParcel &, MessageParcel &reply, MessageOption &) {
+            return reply.WriteInt32(ERR_OK) ? 0 : -1;
+        }));
+
+    EXPECT_EQ(client_->RegisterWillInsightIntentExecuteCallback(mock_->AsObject()), ERR_OK);
+}
+
+/**
+ * @tc.name: AbilityManagerClient_RegisterWillInsightIntentExecuteCallback_0200
+ * @tc.desc: a failed transport request is returned unchanged.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest,
+    AbilityManagerClient_RegisterWillInsightIntentExecuteCallback_0200, TestSize.Level1)
+{
+    client_->proxy_ = new AbilityManagerProxy(mock_);
+    EXPECT_CALL(*mock_, SendRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::REGISTER_WILL_INSIGHT_INTENT_EXECUTE_CALLBACK),
+        _, _, _))
+        .WillOnce(Return(INNER_ERR));
+
+    EXPECT_EQ(client_->RegisterWillInsightIntentExecuteCallback(mock_->AsObject()), INNER_ERR);
+}
+
+/**
+ * @tc.name: AbilityManagerClient_RegisterWillInsightIntentExecuteCallback_0300
+ * @tc.desc: a null callback is rejected before the transport request.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest,
+    AbilityManagerClient_RegisterWillInsightIntentExecuteCallback_0300, TestSize.Level1)
+{
+    client_->proxy_ = new AbilityManagerProxy(mock_);
+    EXPECT_CALL(*mock_, SendRequest(_, _, _, _)).Times(0);
+
+    EXPECT_EQ(client_->RegisterWillInsightIntentExecuteCallback(sptr<IRemoteObject>()), INNER_ERR);
+}
+
+/**
+ * @tc.name: AbilityManagerClient_UnregisterWillInsightIntentExecuteCallback_0100
+ * @tc.desc: forward the unregister request and return the proxy result.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest,
+    AbilityManagerClient_UnregisterWillInsightIntentExecuteCallback_0100, TestSize.Level1)
+{
+    client_->proxy_ = new AbilityManagerProxy(mock_);
+    EXPECT_CALL(*mock_, SendRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::UNREGISTER_WILL_INSIGHT_INTENT_EXECUTE_CALLBACK),
+        _, _, _))
+        .WillOnce(Invoke([](uint32_t, MessageParcel &, MessageParcel &reply, MessageOption &) {
+            return reply.WriteInt32(ERR_OK) ? 0 : -1;
+        }));
+
+    EXPECT_EQ(client_->UnregisterWillInsightIntentExecuteCallback(), ERR_OK);
+}
+
+/**
+ * @tc.name: AbilityManagerClient_UnregisterWillInsightIntentExecuteCallback_0200
+ * @tc.desc: a failed transport request is returned unchanged.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchTest,
+    AbilityManagerClient_UnregisterWillInsightIntentExecuteCallback_0200, TestSize.Level1)
+{
+    client_->proxy_ = new AbilityManagerProxy(mock_);
+    EXPECT_CALL(*mock_, SendRequest(
+        static_cast<uint32_t>(AbilityManagerInterfaceCode::UNREGISTER_WILL_INSIGHT_INTENT_EXECUTE_CALLBACK),
+        _, _, _))
+        .WillOnce(Return(INNER_ERR));
+
+    EXPECT_EQ(client_->UnregisterWillInsightIntentExecuteCallback(), INNER_ERR);
 }
 
 }  // namespace AAFwk
