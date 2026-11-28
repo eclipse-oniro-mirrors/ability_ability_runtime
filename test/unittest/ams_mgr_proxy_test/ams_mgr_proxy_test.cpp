@@ -424,6 +424,48 @@ HWTEST_F(AmsMgrProxyTest, SetGameSAPrelaunch_003, TestSize.Level1)
 }
 
 /**
+ * @tc.name: NotifyGamePrelaunchForeground_001
+ * @tc.desc: NotifyGamePrelaunchForeground with valid token and SendRequest success.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrProxyTest, NotifyGamePrelaunchForeground_001, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "NotifyGamePrelaunchForeground_001 start";
+    ASSERT_NE(amsMgrProxy_, nullptr);
+
+    sptr<IRemoteObject> token = new (std::nothrow) MockAbilityToken();
+    ASSERT_NE(token, nullptr);
+
+    EXPECT_CALL(*mockAmsMgrScheduler_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(ERR_OK));
+
+    amsMgrProxy_->NotifyGamePrelaunchForeground(token);
+    GTEST_LOG_(INFO) << "NotifyGamePrelaunchForeground_001 end";
+}
+
+/**
+ * @tc.name: NotifyGamePrelaunchForeground_002
+ * @tc.desc: NotifyGamePrelaunchForeground with SendRequest returning error.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AmsMgrProxyTest, NotifyGamePrelaunchForeground_002, TestSize.Level1)
+{
+    GTEST_LOG_(INFO) << "NotifyGamePrelaunchForeground_002 start";
+    ASSERT_NE(amsMgrProxy_, nullptr);
+
+    sptr<IRemoteObject> token = new (std::nothrow) MockAbilityToken();
+    ASSERT_NE(token, nullptr);
+
+    EXPECT_CALL(*mockAmsMgrScheduler_, SendRequest(_, _, _, _))
+        .Times(1)
+        .WillOnce(Return(ERR_INVALID_DATA));
+
+    amsMgrProxy_->NotifyGamePrelaunchForeground(token);
+    GTEST_LOG_(INFO) << "NotifyGamePrelaunchForeground_002 end";
+}
+
+/**
  * @tc.name: AttributeProcessForAbility_0100
  * @tc.desc: AttributeProcessForAbility returns the service result and handle.
  * @tc.type: FUNC

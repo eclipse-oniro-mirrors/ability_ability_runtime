@@ -7253,6 +7253,94 @@ HWTEST_F(AppMgrServiceInnerTest, SetGameSAPrelaunch_004, TestSize.Level1)
 }
 
 /**
+ * @tc.name: NotifyGamePrelaunchForeground_001
+ * @tc.desc: Notify through the dedicated game prelaunch foreground channel when the game
+ *           prelaunched app is started to the foreground display again, the state change
+ *           is notified only once.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, NotifyGamePrelaunchForeground_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyGamePrelaunchForeground_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+
+    std::string processName = "testProcess";
+    BundleInfo info;
+    info.name = "com.test.bundle";
+    HapModuleInfo hapModuleInfo;
+    std::shared_ptr<AAFwk::Want> want;
+    auto loadParam = std::make_shared<AbilityRuntime::LoadParam>();
+    sptr<IRemoteObject> token = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    EXPECT_NE(token, nullptr);
+    loadParam->token = token;
+
+    std::shared_ptr<AppRunningRecord> appRecord = appMgrServiceInner->CreateAppRunningRecord(loadParam,
+        applicationInfo_, abilityInfo_, processName, info, hapModuleInfo, want);
+    EXPECT_NE(appRecord, nullptr);
+    appMgrServiceInner->UpdateAbilityState(token, AbilityState::ABILITY_STATE_CREATE);
+
+    // Simulate the game prelaunch: the ability walks the foreground lifecycle and the
+    // preload mode is GAME_PRELAUNCH.
+    appRecord->SetPreloadMode(PreloadMode::GAME_PRELAUNCH);
+    auto abilityRecord = appRecord->GetAbilityRunningRecordByToken(token);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->SetState(AbilityState::ABILITY_STATE_FOREGROUND);
+
+    // The prelaunched game is started to the foreground display again through the dedicated
+    // channel. The state change is notified and the preload mode is cleared to guarantee
+    // notifying only once.
+    appMgrServiceInner->NotifyGamePrelaunchForeground(token);
+    EXPECT_EQ(abilityRecord->GetState(), AbilityState::ABILITY_STATE_FOREGROUND);
+    EXPECT_EQ(appRecord->GetPreloadMode(), PreloadMode::PRELOAD_NONE);
+
+    // Subsequent notifications of the same ability are not sent again.
+    appMgrServiceInner->NotifyGamePrelaunchForeground(token);
+    EXPECT_EQ(appRecord->GetPreloadMode(), PreloadMode::PRELOAD_NONE);
+
+    // Notify with a null token or an unknown token is safe.
+    appMgrServiceInner->NotifyGamePrelaunchForeground(nullptr);
+    sptr<IRemoteObject> unknownToken = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    appMgrServiceInner->NotifyGamePrelaunchForeground(unknownToken);
+    EXPECT_TRUE(true);
+    TAG_LOGI(AAFwkTag::TEST, "NotifyGamePrelaunchForeground_001 end");
+}
+
+/**
+ * @tc.name: NotifyGamePrelaunchForeground_002
+ * @tc.desc: Notify through the dedicated game prelaunch foreground channel when the app is
+ *           not game prelaunch, no game prelaunch foreground state is notified.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerTest, NotifyGamePrelaunchForeground_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "NotifyGamePrelaunchForeground_002 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    EXPECT_NE(appMgrServiceInner, nullptr);
+
+    std::string processName = "testProcess";
+    BundleInfo info;
+    info.name = "com.test.bundle";
+    HapModuleInfo hapModuleInfo;
+    std::shared_ptr<AAFwk::Want> want;
+    auto loadParam = std::make_shared<AbilityRuntime::LoadParam>();
+    sptr<IRemoteObject> token = sptr<IRemoteObject>(new (std::nothrow) MockAbilityToken());
+    EXPECT_NE(token, nullptr);
+    loadParam->token = token;
+
+    std::shared_ptr<AppRunningRecord> appRecord = appMgrServiceInner->CreateAppRunningRecord(loadParam,
+        applicationInfo_, abilityInfo_, processName, info, hapModuleInfo, want);
+    EXPECT_NE(appRecord, nullptr);
+    appMgrServiceInner->UpdateAbilityState(token, AbilityState::ABILITY_STATE_CREATE);
+
+    // The app is not prelaunched as a game, keep a non-game prelaunch mode.
+    appRecord->SetPreloadMode(PreloadMode::PRE_MAKE);
+    appMgrServiceInner->NotifyGamePrelaunchForeground(token);
+    EXPECT_EQ(appRecord->GetPreloadMode(), PreloadMode::PRE_MAKE);
+    TAG_LOGI(AAFwkTag::TEST, "NotifyGamePrelaunchForeground_002 end");
+}
+
+/**
  * @tc.name: UpdateConfigurationByUserIds_0001
  * @tc.desc: UpdateConfigurationByUserIds
  * @tc.type: FUNC

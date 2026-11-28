@@ -483,6 +483,9 @@ UIAbilityRecordPtr UIAbilityLifecycleManager::HandleAbilityRecordReused(
         // Report game prelaunch user click event to RSS.
         ResSchedUtil::GetInstance().ReportGameClickToRSS(
             uiAbilityRecord->GetBundleName(), uiAbilityRecord->GetPid(), uiAbilityRecord->GetUid());
+        // The prelaunched game is started to the foreground display again.
+        IN_PROCESS_CALL_WITHOUT_RET(DelayedSingleton<AppScheduler>::GetInstance()->NotifyGamePrelaunchForeground(
+            uiAbilityRecord->GetToken()));
         // Cancel the pending extend delayed task before clearing the prelaunch flag.
         CleanupExtendTask(uiAbilityRecord->GetRecordId());
         // Clear the game SA prelaunch flag in AbilityRecord and AppRecord when reusing AbilityRecord.

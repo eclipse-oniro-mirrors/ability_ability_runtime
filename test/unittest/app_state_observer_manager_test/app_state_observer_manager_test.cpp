@@ -858,6 +858,64 @@ HWTEST_F(AppSpawnSocketTest, HandleAppStateChanged_008, TestSize.Level2)
 
 /*
  * Feature: AppStateObserverManager
+ * Function: HandleOnGamePrelaunchForegroundChanged
+ * SubFunction: NA
+ * FunctionPoints: AppStateObserverManager HandleOnGamePrelaunchForegroundChanged
+ * EnvConditions: NA
+ * CaseDescription: Verify the state change of a game prelaunched to the foreground display
+ *                  again is dispatched to the registered observer with the GAME_PRELAUNCH
+ *                  preload mode.
+ */
+HWTEST_F(AppSpawnSocketTest, HandleOnGamePrelaunchForegroundChanged_001, TestSize.Level2)
+{
+    class RecordingObserver : public IApplicationStateObserver {
+    public:
+        RecordingObserver() = default;
+        virtual ~RecordingObserver() = default;
+        void OnForegroundApplicationChanged(const AppStateData &appStateData) override {}
+        void OnAbilityStateChanged(const AbilityStateData &abilityStateData) override {}
+        void OnExtensionStateChanged(const AbilityStateData &abilityStateData) override {}
+        void OnProcessCreated(const ProcessData &processData) override {}
+        void OnProcessDied(const ProcessData &processData) override {}
+        void OnApplicationStateChanged(const AppStateData &appStateData) override {}
+        void OnAppStateChanged(const AppStateData &appStateData) override {}
+        void OnGamePrelaunchForegroundStateChanged(const AppStateData &appStateData) override
+        {
+            notifyCount_++;
+            lastPreloadMode_ = appStateData.preloadMode;
+            lastState_ = appStateData.state;
+            lastBundleName_ = appStateData.bundleName;
+        }
+        sptr<IRemoteObject> AsObject() override
+        {
+            return {};
+        }
+        int notifyCount_ = 0;
+        int lastPreloadMode_ = -1;
+        int lastState_ = -1;
+        std::string lastBundleName_;
+    };
+    auto manager = std::make_shared<AppStateObserverManager>();
+    ASSERT_NE(manager, nullptr);
+    auto observer = sptr<RecordingObserver>(new RecordingObserver());
+    ASSERT_NE(observer, nullptr);
+    std::vector<std::string> bundleNameList;
+    manager->appStateObserverMap_.emplace(observer, AppStateObserverInfo{0, bundleNameList});
+
+    AppStateData data;
+    data.bundleName = "com.ohos.unittest";
+    data.state = static_cast<int32_t>(ApplicationState::APP_STATE_FOREGROUND);
+    data.preloadMode = static_cast<int32_t>(PreloadMode::GAME_PRELAUNCH);
+    manager->HandleOnGamePrelaunchForegroundChanged(data, BundleType::APP);
+
+    EXPECT_EQ(observer->notifyCount_, 1);
+    EXPECT_EQ(observer->lastState_, static_cast<int32_t>(ApplicationState::APP_STATE_FOREGROUND));
+    EXPECT_EQ(observer->lastPreloadMode_, static_cast<int32_t>(PreloadMode::GAME_PRELAUNCH));
+    EXPECT_STREQ(observer->lastBundleName_.c_str(), "com.ohos.unittest");
+}
+
+/*
+ * Feature: AppStateObserverManager
  * Function: HandleStateChangedNotifyObserver
  * SubFunction: NA
  * FunctionPoints: AppStateObserverManager HandleStateChangedNotifyObserver

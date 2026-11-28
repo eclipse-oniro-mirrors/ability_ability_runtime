@@ -129,6 +129,15 @@ public:
     virtual int32_t SetGameSAPrelaunch(const sptr<IRemoteObject> &token, bool isGameSAPrelaunch) override;
 
     /**
+     * NotifyGamePrelaunchForeground, notify that a game prelaunched to the foreground lifecycle
+     * is started to the foreground display again, only once per game prelaunch.
+     *
+     * @param token, the unique identification to the ability.
+     * @return
+     */
+    virtual void NotifyGamePrelaunchForeground(const sptr<IRemoteObject> &token) override;
+
+    /**
      * AttributeProcessForAbility, report task attribution for a start-ability call;
      * only the foundation process (abilitymgr) is allowed to call.
      *

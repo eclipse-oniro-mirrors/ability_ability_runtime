@@ -173,6 +173,16 @@ public:
      */
     virtual void OnProcessTypeChanged(const ProcessData &processData) {};
 
+    /**
+     * Will be called when a game prelaunched to the foreground lifecycle is started to the
+     * foreground display again, for example the user clicks the icon to launch the preloaded
+     * game. The appStateData carries the GAME_PRELAUNCH preload mode, and this is notified
+     * only once per game prelaunch.
+     *
+     * @param appStateData Application state data.
+     */
+    virtual void OnGamePrelaunchForegroundStateChanged(const AppStateData &appStateData) {};
+
     enum class Message {
         TRANSACT_ON_FOREGROUND_APPLICATION_CHANGED = 0,
         TRANSACT_ON_ABILITY_STATE_CHANGED,
@@ -194,6 +204,7 @@ public:
         TRANSACT_ON_KEEP_ALIVE_STATE_CHANGED,
         TRANSACT_ON_PRELOAD_PROCESS_STATE_CHANGED,
         TRANSACT_ON_PROCESS_TYPE_CHANGED,
+        TRANSACT_ON_GAME_PRELAUNCH_FOREGROUND_STATE_CHANGED,
     };
 };
 }  // namespace AppExecFwk

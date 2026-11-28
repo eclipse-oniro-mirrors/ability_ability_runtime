@@ -5025,6 +5025,22 @@ void AppMgrServiceInner::UpdateAbilityState(const sptr<IRemoteObject> &token, co
     CheckCleanAbilityByLowMem(appRecord, abilityRecord, state);
 }
 
+void AppMgrServiceInner::NotifyGamePrelaunchForeground(const sptr<IRemoteObject> &token)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_APP, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::APPMGR, "NotifyGamePrelaunchForeground called");
+    CHECK_POINTER_AND_RETURN_LOG(token, "token null");
+    auto appRecord = GetAppRunningRecordByAbilityToken(token);
+    CHECK_POINTER_AND_RETURN_LOG(appRecord, "app unexist");
+    if (appRecord->GetPreloadMode() != PreloadMode::GAME_PRELAUNCH) {
+        TAG_LOGD(AAFwkTag::APPMGR, "not game prelaunch, bundle:%{public}s", appRecord->GetBundleName().c_str());
+        return;
+    }
+
+    DelayedSingleton<AppStateObserverManager>::GetInstance()->OnGamePrelaunchForegroundChanged(appRecord);
+    appRecord->SetPreloadMode(PreloadMode::PRELOAD_NONE);
+}
+
 void AppMgrServiceInner::UpdateExtensionState(const sptr<IRemoteObject> &token, const ExtensionState state)
 {
     if (!token) {

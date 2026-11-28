@@ -128,6 +128,15 @@ public:
     virtual int32_t SetGameSAPrelaunch(const sptr<IRemoteObject> &token, bool isGameSAPrelaunch) = 0;
 
     /**
+     * NotifyGamePrelaunchForeground, notify that a game prelaunched to the foreground lifecycle
+     * is started to the foreground display again, for example the user clicks the icon to launch the preloaded game.
+     *
+     * @param token, the unique identification to the ability.
+     * @return
+     */
+    virtual void NotifyGamePrelaunchForeground(const sptr<IRemoteObject> &token) = 0;
+
+    /**
      * AttributeProcessForAbility, report task attribution for a start-ability call (the cold
      * case reports at attach time through the same method); caller identity is system-stamped.
      *
@@ -691,6 +700,7 @@ public:
         ATTRIBUTE_PROCESS_FOR_ABILITY,
         UNREGISTER_TASK_ATTRIBUTION,
         REGISTER_TASK_STATE_CALLBACK,
+        NOTIFY_GAME_PRELAUNCH_FOREGROUND,
         // Add enumeration values above
         END
     };

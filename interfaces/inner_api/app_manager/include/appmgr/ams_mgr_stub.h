@@ -53,6 +53,7 @@ private:
     int32_t HandleReset(MessageParcel &data, MessageParcel &reply);
     int32_t HandleKillProcessByAbilityToken(MessageParcel &data, MessageParcel &reply);
     int32_t HandleSetGameSAPrelaunch(MessageParcel &data, MessageParcel &reply);
+    int32_t HandleNotifyGamePrelaunchForeground(MessageParcel &data, MessageParcel &reply);
 
     /**
      * Handle the attribution report of a warm start-ability call, reply the result code.

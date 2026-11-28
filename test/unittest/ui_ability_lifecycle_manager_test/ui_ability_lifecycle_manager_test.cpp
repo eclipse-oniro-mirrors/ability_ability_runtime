@@ -9131,6 +9131,62 @@ HWTEST_F(UIAbilityLifecycleManagerTest, CompleteForegroundSuccess_GameSAPreLaunc
 }
 
 /**
+ * @tc.name: HandleAbilityRecordReused_GameSAPreLaunch_0001
+ * @tc.desc: Reuse the game SA prelaunched ability record to start to the foreground display
+ *           again, the prelaunch flag is cleared so the state change is notified only once.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, HandleAbilityRecordReused_GameSAPreLaunch_0001, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->SetSessionInfo(sessionInfo);
+    abilityRecord->SetGameSAPreLaunch(true);
+
+    auto result = mgr->HandleAbilityRecordReused(abilityRecord, *sessionInfo, abilityRequest);
+    // The app manager service is unavailable in the unit test environment, so the reuse fails
+    // after the prelaunch flag is cleared.
+    EXPECT_EQ(result, nullptr);
+    EXPECT_FALSE(abilityRecord->IsGameSAPreLaunch());
+}
+
+/**
+ * @tc.name: HandleAbilityRecordReused_GameSAPreLaunch_0002
+ * @tc.desc: Reuse a normal ability record which is not game SA prelaunch, the record is reused
+ *           without clearing any prelaunch flag.
+ * @tc.type: FUNC
+ */
+HWTEST_F(UIAbilityLifecycleManagerTest, HandleAbilityRecordReused_GameSAPreLaunch_0002, TestSize.Level1)
+{
+    auto mgr = std::make_unique<UIAbilityLifecycleManager>();
+    AbilityRequest abilityRequest;
+    abilityRequest.appInfo.bundleName = "com.example.unittest";
+    abilityRequest.abilityInfo.name = "MainAbility";
+    abilityRequest.abilityInfo.type = AppExecFwk::AbilityType::PAGE;
+
+    Rosen::SessionInfo info;
+    sptr<SessionInfo> sessionInfo(new SessionInfo());
+    sessionInfo->sessionToken = new Rosen::Session(info);
+    auto abilityRecord = UIAbilityRecord::CreateAbilityRecord(abilityRequest);
+    ASSERT_NE(abilityRecord, nullptr);
+    abilityRecord->SetSessionInfo(sessionInfo);
+    abilityRecord->SetGameSAPreLaunch(false);
+
+    auto result = mgr->HandleAbilityRecordReused(abilityRecord, *sessionInfo, abilityRequest);
+    EXPECT_NE(result, nullptr);
+    EXPECT_FALSE(abilityRecord->IsGameSAPreLaunch());
+}
+
+/**
  * @tc.name: StartUIAbility_WithRequestId_0100
  * @tc.desc: Test StartUIAbility with requestId and scbRequestId set in sessionInfo
  * @tc.type: FUNC

@@ -167,6 +167,16 @@ public:
 
     virtual void OnProcessPreForegroundChanged(const PreloadProcessData &preloadProcessData) override;
 
+    /**
+     * Will be called when a game prelaunched to the foreground lifecycle is started to the
+     * foreground display again, for example the user clicks the icon to launch the preloaded
+     * game. The appStateData carries the GAME_PRELAUNCH preload mode, and this is notified
+     * only once per game prelaunch.
+     *
+     * @param appStateData Application state data.
+     */
+    virtual void OnGamePrelaunchForegroundStateChanged(const AppStateData &appStateData) override;
+
 private:
     int32_t HandleOnForegroundApplicationChanged(MessageParcel &data, MessageParcel &reply);
 
@@ -207,6 +217,8 @@ private:
     int32_t HandleOnProcessPreForegroundChanged(MessageParcel &data, MessageParcel &reply);
 
     int32_t HandleOnProcessTypeChanged(MessageParcel &data, MessageParcel &reply);
+
+    int32_t HandleOnGamePrelaunchForegroundStateChanged(MessageParcel &data, MessageParcel &reply);
 
     static std::mutex callbackMutex_;
 

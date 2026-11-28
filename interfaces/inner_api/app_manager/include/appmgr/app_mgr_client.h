@@ -127,6 +127,15 @@ public:
         bool isFromScreenOffBackground = false, const UiAbilityLastCallerInfo &callerInfo = {});
 
     /**
+     * Notify that a game prelaunched to the foreground lifecycle is started to the
+     * foreground display again, for example the user clicks the icon to launch the preloaded game.
+     *
+     * @param token Unique identification of the ability.
+     * @return RESULT_OK if dispatched, otherwise ERROR_SERVICE_NOT_CONNECTED.
+     */
+    virtual AppMgrResultCode NotifyGamePrelaunchForeground(const sptr<IRemoteObject> &token);
+
+    /**
      * Update the running state of an extension ability identified by token.
      * Internal use.
      *

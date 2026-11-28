@@ -457,6 +457,28 @@ HWTEST_F(AmsMgrSchedulerTest, UpdateAbilityState_001, TestSize.Level2)
 
 /*
  * Feature: AmsMgrScheduler
+ * Function: NotifyGamePrelaunchForeground
+ * SubFunction: NA
+ * FunctionPoints: AmsMgrScheduler NotifyGamePrelaunchForeground
+ * EnvConditions: NA
+ * CaseDescription: Verify NotifyGamePrelaunchForeground through the dedicated game prelaunch
+ *                  foreground channel, with both the null service and the mock service.
+ */
+HWTEST_F(AmsMgrSchedulerTest, NotifyGamePrelaunchForeground_001, TestSize.Level2)
+{
+    auto amsMgrScheduler = std::make_unique<AmsMgrScheduler>(nullptr, nullptr);
+    ASSERT_NE(amsMgrScheduler, nullptr);
+    sptr<IRemoteObject> token = nullptr;
+    // The service is not ready, the notification is safely ignored.
+    amsMgrScheduler->NotifyGamePrelaunchForeground(token);
+    // The mock service and the task handler are ready, the notification is dispatched.
+    amsMgrScheduler->amsMgrServiceInner_ = GetMockAppMgrServiceInner();
+    amsMgrScheduler->amsHandler_ = GetAmsTaskHandler();
+    amsMgrScheduler->NotifyGamePrelaunchForeground(token);
+}
+
+/*
+ * Feature: AmsMgrScheduler
  * Function: UpdateExtensionState
  * SubFunction: NA
  * FunctionPoints: AmsMgrScheduler UpdateExtensionState

@@ -163,6 +163,14 @@ void AppScheduler::UpdateAbilityState(const sptr<IRemoteObject> &token, const Ap
     IN_PROCESS_CALL_WITHOUT_RET(appMgrClient_->UpdateAbilityState(token, state));
 }
 
+void AppScheduler::NotifyGamePrelaunchForeground(const sptr<IRemoteObject> &token)
+{
+    HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
+    TAG_LOGD(AAFwkTag::ABILITYMGR, "NotifyGamePrelaunchForeground.");
+    CHECK_POINTER(appMgrClient_);
+    IN_PROCESS_CALL_WITHOUT_RET(appMgrClient_->NotifyGamePrelaunchForeground(token));
+}
+
 void AppScheduler::UpdateExtensionState(const sptr<IRemoteObject> &token, const AppExecFwk::ExtensionState state)
 {
     if (AppUtils::GetInstance().IsForbidStart()) {

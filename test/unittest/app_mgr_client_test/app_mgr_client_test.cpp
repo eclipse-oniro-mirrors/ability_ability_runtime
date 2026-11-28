@@ -1828,6 +1828,55 @@ HWTEST_F(AppMgrClientTest, AppMgrClient_UnregisterImageProcessStateObserver_001,
 }
 
 /**
+ * @tc.name: AppMgrClient_NotifyGamePrelaunchForeground_001
+ * @tc.desc: NotifyGamePrelaunchForeground with null service.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrClientTest, AppMgrClient_NotifyGamePrelaunchForeground_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrClient_NotifyGamePrelaunchForeground_001 start");
+    AAFwk::IsMockSaCall::IsMockSpecificSystemAbilityAccessPermission();
+    auto appMgrClient = std::make_unique<AppMgrClient>();
+    ASSERT_NE(appMgrClient, nullptr);
+    appMgrClient->SetServiceManager(nullptr);
+
+    sptr<IRemoteObject> token = nullptr;
+    auto result = appMgrClient->NotifyGamePrelaunchForeground(token);
+    EXPECT_EQ(result, AppMgrResultCode::ERROR_SERVICE_NOT_CONNECTED);
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrClient_NotifyGamePrelaunchForeground_001 end");
+}
+
+/**
+ * @tc.name: AppMgrClient_NotifyGamePrelaunchForeground_002
+ * @tc.desc: NotifyGamePrelaunchForeground with valid service and amsService.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrClientTest, AppMgrClient_NotifyGamePrelaunchForeground_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrClient_NotifyGamePrelaunchForeground_002 start");
+    auto appMgrClient = std::make_unique<AppMgrClient>();
+    EXPECT_NE(appMgrClient, nullptr);
+
+    auto result = appMgrClient->ConnectAppMgrService();
+    if (result != AppMgrResultCode::RESULT_OK) {
+        GTEST_LOG_(INFO) << "Service not available, skipping test";
+        return;
+    }
+
+    std::string deviceName = "device";
+    std::string abilityName = "TestAbility";
+    std::string appName = "TestApp";
+    std::string bundleName = "com.test.app";
+    auto abilityReq = GenerateAbilityRequest(deviceName, abilityName, appName, bundleName);
+    auto record = AbilityRecord::CreateAbilityRecord(abilityReq);
+    auto token = record->GetToken();
+
+    result = appMgrClient->NotifyGamePrelaunchForeground(token);
+    EXPECT_EQ(result, AppMgrResultCode::RESULT_OK);
+    TAG_LOGI(AAFwkTag::TEST, "AppMgrClient_NotifyGamePrelaunchForeground_002 end");
+}
+
+/**
  * @tc.name: MakeImage_001
  * @tc.desc: make image.
  * @tc.type: FUNC
