@@ -47,14 +47,14 @@ void AbilityManagerServiceTest::TearDown() {}
 
 /**
  * @tc.name: CheckStartByCallPermission_001
- * @tc.desc: Verify function CheckStartByCallPermission return RESOLVE_CALL_NO_PERMISSIONS
+ * @tc.desc: Verify function CheckStartByCallPermission return RESOLVE_CALL_ABILITY_TYPE_ERR
+ *           when ability type is not PAGE
  * @tc.type: FUNC
  * @tc.require:
  */
 HWTEST_F(AbilityManagerServiceTest, CheckStartByCallPermission_001, TestSize.Level1)
 {
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
-    abilityMs_->OnStart();
     if (abilityRecord_ == nullptr) {
         abilityRequest_.appInfo.bundleName = "data.client.bundle";
         abilityRequest_.abilityInfo.name = "ClientAbility";
@@ -67,14 +67,14 @@ HWTEST_F(AbilityManagerServiceTest, CheckStartByCallPermission_001, TestSize.Lev
 
 /**
  * @tc.name: CheckStartByCallPermission_002
- * @tc.desc: Verify function CheckStartByCallPermission return ERR_OK
+ * @tc.desc: Verify function CheckStartByCallPermission return RESOLVE_CALL_NO_PERMISSIONS
+ *           when caller has no start-by-call permission
  * @tc.type: FUNC
  * @tc.require:
  */
 HWTEST_F(AbilityManagerServiceTest, CheckStartByCallPermission_002, TestSize.Level1)
 {
     auto abilityMs_ = std::make_shared<AbilityManagerService>();
-    abilityMs_->OnStart();
     if (abilityRecord_ == nullptr) {
         abilityRequest_.appInfo.bundleName = "data.client.bundle";
         abilityRequest_.abilityInfo.name = "ClientAbility";
