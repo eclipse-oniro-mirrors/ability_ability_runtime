@@ -444,6 +444,8 @@ Ability_NativeChildProcess_ErrCode OH_Ability_StartNativeChildProcessWithConfigs
  * @brief Child process get self NativeChildProcess_Args.
  *
  * @return Returns a pointer to the arguments passed to current child process.\n
+ * The returned pointer is owned by the framework. Do not free or modify it, and it remains valid
+ * for the lifetime of the child process.\n
  * For details, see {@link NativeChildProcess_Args}.
  * @since 17
  */
