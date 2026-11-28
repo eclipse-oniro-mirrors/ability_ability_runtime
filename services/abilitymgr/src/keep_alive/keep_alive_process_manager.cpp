@@ -416,6 +416,43 @@ void KeepAliveProcessManager::AddNeedRestartKeepAliveUid(int32_t uid)
     needRestartKeepAliveUidSet_.emplace(uid);
 }
 
+void KeepAliveProcessManager::ClassifyNeedRestartBundleInfos(
+    const std::vector<AppExecFwk::BundleInfo> &bundleInfos,
+    std::map<int32_t, std::vector<AppExecFwk::BundleInfo>> &bundleInfosMap,
+    std::vector<AppExecFwk::BundleInfo> &bundleInfosForU1)
+{
+    for (const auto &item : bundleInfos) {
+        auto user = item.uid / BASE_USER_RANGE;
+        if (user == U0_USER_ID) {
+            // U0 does not hold keep-alive apps. As a defensive path, a keep-alive app
+            // of U0 is neither restarted immediately nor registered for delayed restart.
+            TAG_LOGI(AAFwkTag::KEEP_ALIVE, "U0 keep-alive app is dropped, uid: %{public}d", item.uid);
+            continue;
+        }
+        if (KeepAliveIsRestartAfterUpdate(item.uid) &&
+            (user == U1_USER_ID ||
+            AbilityRuntime::UserController::GetInstance().IsForegroundUser(user))) {
+            TAG_LOGI(AAFwkTag::KEEP_ALIVE, "KeepAliveIsRestartAfterUpdate uid: %{public}d", item.uid);
+            continue;
+        }
+        if (user == U1_USER_ID) {
+            bundleInfosForU1.push_back(item);
+        } else if (AbilityRuntime::UserController::GetInstance().IsForegroundUser(user)) {
+            auto search = bundleInfosMap.find(user);
+            if (search != bundleInfosMap.end()) {
+                search->second.push_back(item);
+            } else {
+                std::vector<AppExecFwk::BundleInfo> bundleInfosForCurrentUser;
+                bundleInfosForCurrentUser.push_back(item);
+                bundleInfosMap.emplace(user, bundleInfosForCurrentUser);
+            }
+        } else {
+            TAG_LOGI(AAFwkTag::KEEP_ALIVE, "keepAlive not U1 or current user, uid: %{public}d", item.uid);
+            AddNeedRestartKeepAliveUid(item.uid);
+        }
+    }
+}
+
 int32_t KeepAliveProcessManager::QueryKeepAliveApplications(int32_t appType, int32_t userId,
     std::vector<KeepAliveInfo> &infoList, bool isByEDM)
 {

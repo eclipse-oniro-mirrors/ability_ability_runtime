@@ -31,6 +31,8 @@
 #include "scene_board_judgement.h"
 #include "call_record.h"
 #include "utils/start_ability_utils.h"
+#include "keep_alive_process_manager.h"
+#include "user_controller/user_controller.h"
 
 using namespace testing;
 using namespace testing::ext;
@@ -2593,6 +2595,159 @@ HWTEST_F(AbilityManagerServiceFourteenthTest,
     DelayedSingleton<InsightIntentExecuteManager>::GetInstance()
         ->NotifyInsightIntentWillExecute(1002, info);
     EXPECT_EQ(callback->callCount_, 0);
+}
+
+/*
+ * @tc.name: NotifyStartKeepAliveProcess_001
+ * @tc.desc: U0 does not hold keep-alive apps. A keep-alive app of U0 should be
+ *           dropped as a defensive path, neither restarted immediately nor
+ *           registered into the need-restart set.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, NotifyStartKeepAliveProcess_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest NotifyStartKeepAliveProcess_001 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    // The mocked parameter switch drives every system parameter gate in this
+    // target; force it on so the entry gate of NotifyStartKeepAliveProcess opens.
+    const bool beforeValue = MyStatus::GetInstance().paramGetBoolParameter_;
+    MyStatus::GetInstance().paramGetBoolParameter_ = true;
+
+    AppExecFwk::BundleInfo bundleInfo;
+    // userId = uid / BASE_USER_RANGE = 0.
+    bundleInfo.uid = 100;
+    std::vector<AppExecFwk::BundleInfo> bundleInfos;
+    bundleInfos.emplace_back(bundleInfo);
+    // ARRANGE: drop leftover foreground/need-restart state so that the assertion
+    // below only reflects this test's ACT, regardless of execution order.
+    AbilityRuntime::UserController::GetInstance().ClearUserId(0);
+    std::vector<AppExecFwk::BundleInfo> preClean;
+    preClean.emplace_back(bundleInfo);
+    KeepAliveProcessManager::GetInstance().FilterNeedRestartKeepAliveBundleInfos(preClean);
+    abilityMs->NotifyStartKeepAliveProcess(bundleInfos, -1);
+
+    std::vector<AppExecFwk::BundleInfo> verifyInfos;
+    verifyInfos.emplace_back(bundleInfo);
+    KeepAliveProcessManager::GetInstance().FilterNeedRestartKeepAliveBundleInfos(verifyInfos);
+    // U0 is dropped as a defensive path, so the uid must NOT stay in the need-restart set.
+    EXPECT_TRUE(verifyInfos.empty());
+    MyStatus::GetInstance().paramGetBoolParameter_ = beforeValue;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest NotifyStartKeepAliveProcess_001 end");
+}
+
+/*
+ * @tc.name: NotifyStartKeepAliveProcess_002
+ * @tc.desc: keep-alive app of a non-U0/U1 background user should be registered
+ *           into the need-restart set and replayed once on user switch.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, NotifyStartKeepAliveProcess_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest NotifyStartKeepAliveProcess_002 start");
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    // The mocked parameter switch drives every system parameter gate in this
+    // target; force it on so the entry gate of NotifyStartKeepAliveProcess opens.
+    const bool beforeValue = MyStatus::GetInstance().paramGetBoolParameter_;
+    MyStatus::GetInstance().paramGetBoolParameter_ = true;
+
+    AppExecFwk::BundleInfo bundleInfo;
+    // userId = uid / BASE_USER_RANGE = 100, neither U0/U1 nor an active user.
+    bundleInfo.uid = 20000100;
+    std::vector<AppExecFwk::BundleInfo> bundleInfos;
+    bundleInfos.emplace_back(bundleInfo);
+    // ARRANGE: drop leftover foreground-user state and need-restart registrations
+    // so that the assertion below only reflects this test's ACT, regardless of
+    // execution order.
+    AbilityRuntime::UserController::GetInstance().ClearUserId(100);
+    AbilityRuntime::UserController::GetInstance().ClearUserId(0);
+    std::vector<AppExecFwk::BundleInfo> preClean;
+    preClean.emplace_back(bundleInfo);
+    KeepAliveProcessManager::GetInstance().FilterNeedRestartKeepAliveBundleInfos(preClean);
+    abilityMs->NotifyStartKeepAliveProcess(bundleInfos, -1);
+
+    std::vector<AppExecFwk::BundleInfo> verifyInfos;
+    verifyInfos.emplace_back(bundleInfo);
+    KeepAliveProcessManager::GetInstance().FilterNeedRestartKeepAliveBundleInfos(verifyInfos);
+    // The uid was registered for delayed restart and is consumed once here.
+    EXPECT_EQ(verifyInfos.size(), static_cast<size_t>(1));
+
+    KeepAliveProcessManager::GetInstance().FilterNeedRestartKeepAliveBundleInfos(verifyInfos);
+    // The registration is consumed, the second filter should erase it.
+    EXPECT_TRUE(verifyInfos.empty());
+    MyStatus::GetInstance().paramGetBoolParameter_ = beforeValue;
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest NotifyStartKeepAliveProcess_002 end");
+}
+
+/*
+ * @tc.name: ClassifyNeedRestartBundleInfos_001
+ * @tc.desc: classify drops the user 0 app as a defensive path, collects the
+ *           user 1 app and the active-user app, and registers a non-U0/U1
+ *           background user app for delayed restart.
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, ClassifyNeedRestartBundleInfos_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest ClassifyNeedRestartBundleInfos_001 start");
+    AppExecFwk::BundleInfo u0Info;
+    // userId = uid / BASE_USER_RANGE = 0.
+    u0Info.uid = 100;
+    AppExecFwk::BundleInfo u1Info;
+    // userId = uid / BASE_USER_RANGE = 1.
+    u1Info.uid = 200001;
+    AppExecFwk::BundleInfo activeUserInfo;
+    // userId = uid / BASE_USER_RANGE = 2, set as the foreground user below.
+    activeUserInfo.uid = 400001;
+    AppExecFwk::BundleInfo backgroundInfo;
+    // userId = uid / BASE_USER_RANGE = 300, neither U0/U1 nor an active user.
+    backgroundInfo.uid = 60000100;
+
+    // ARRANGE: drop leftover foreground-user state and need-restart registrations
+    // so that the assertions below only reflect this test's ACT, regardless of
+    // execution order.
+    AbilityRuntime::UserController::GetInstance().ClearUserId(2);
+    std::vector<AppExecFwk::BundleInfo> preClean;
+    preClean.emplace_back(backgroundInfo);
+    KeepAliveProcessManager::GetInstance().FilterNeedRestartKeepAliveBundleInfos(preClean);
+    AbilityRuntime::UserController::GetInstance().SetForegroundUserId(2, 0);
+
+    std::vector<AppExecFwk::BundleInfo> bundleInfos;
+    bundleInfos.emplace_back(u0Info);
+    bundleInfos.emplace_back(u1Info);
+    bundleInfos.emplace_back(activeUserInfo);
+    bundleInfos.emplace_back(backgroundInfo);
+    std::map<int32_t, std::vector<AppExecFwk::BundleInfo>> bundleInfosMap;
+    std::vector<AppExecFwk::BundleInfo> bundleInfosForU1;
+    KeepAliveProcessManager::GetInstance().ClassifyNeedRestartBundleInfos(bundleInfos, bundleInfosMap,
+        bundleInfosForU1);
+
+    // User 1 is collected for the app service extension restart.
+    EXPECT_EQ(bundleInfosForU1.size(), static_cast<size_t>(1));
+    EXPECT_EQ(bundleInfosForU1[0].uid, 200001);
+    // The active-user app is collected per user for the main element restart.
+    EXPECT_EQ(bundleInfosMap.size(), static_cast<size_t>(1));
+    EXPECT_NE(bundleInfosMap.find(2), bundleInfosMap.end());
+    EXPECT_EQ(bundleInfosMap[2].size(), static_cast<size_t>(1));
+    EXPECT_EQ(bundleInfosMap[2][0].uid, 400001);
+
+    std::vector<AppExecFwk::BundleInfo> verifyU0;
+    verifyU0.emplace_back(u0Info);
+    KeepAliveProcessManager::GetInstance().FilterNeedRestartKeepAliveBundleInfos(verifyU0);
+    // The user 0 app was not registered for delayed restart.
+    EXPECT_TRUE(verifyU0.empty());
+
+    std::vector<AppExecFwk::BundleInfo> verifyBackground;
+    verifyBackground.emplace_back(backgroundInfo);
+    KeepAliveProcessManager::GetInstance().FilterNeedRestartKeepAliveBundleInfos(verifyBackground);
+    // The background user app was registered for delayed restart and is consumed once here.
+    EXPECT_EQ(verifyBackground.size(), static_cast<size_t>(1));
+    KeepAliveProcessManager::GetInstance().FilterNeedRestartKeepAliveBundleInfos(verifyBackground);
+    // The registration is consumed, the second filter should erase it.
+    EXPECT_TRUE(verifyBackground.empty());
+
+    AbilityRuntime::UserController::GetInstance().ClearUserId(2);
+    TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest ClassifyNeedRestartBundleInfos_001 end");
 }
 } // namespace AAFwk
 } // namespace OHOS

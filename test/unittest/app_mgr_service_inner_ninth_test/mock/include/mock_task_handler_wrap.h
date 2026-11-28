@@ -43,6 +43,7 @@ public:
             task();
         }
         // Track task submission for test verification
+        submitTaskCalledCount_++;
         MyStatus::GetInstance().restartResidentProcessDependedOnWeb_taskSubmitted_called_ = true;
         return nullptr; // Return null to avoid FFRT handle management
     }
@@ -58,6 +59,9 @@ public:
     uint64_t GetTaskCount() override {
         return 0; // Return 0 for testing
     }
+
+    // Total number of tasks submitted through this handler, for test verification.
+    int submitTaskCalledCount_ = 0;
 
 protected:
     // Override initialization to prevent FFRT resource creation

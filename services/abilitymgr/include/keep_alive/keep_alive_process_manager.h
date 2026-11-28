@@ -17,6 +17,7 @@
 #define OHOS_ABILITY_RUNTIME_KEEP_ALIVE_PROCESS_MANAGER_H
 
 #include <functional>
+#include <map>
 #include <mutex>
 
 #include "ability_manager_service.h"
@@ -175,6 +176,21 @@ public:
 
     void FilterNeedRestartKeepAliveBundleInfos(std::vector<AppExecFwk::BundleInfo> &bundleInfos);
     void AddNeedRestartKeepAliveUid(int32_t uid);
+
+    /**
+     * Classify keep-alive bundle infos by user for the restart decision. A
+     * keep-alive app of user 0 is dropped as a defensive path; an app of user 1
+     * is collected for the app service extension restart; an app of an active
+     * user is collected per user for the main element restart; an app of other
+     * users is registered for the delayed restart. No restart is triggered here.
+     *
+     * @param bundleInfos bundles of keep-alive processes.
+     * @param bundleInfosMap Output parameter, collected bundle infos per active user.
+     * @param bundleInfosForU1 Output parameter, collected bundle infos of user 1.
+     */
+    void ClassifyNeedRestartBundleInfos(const std::vector<AppExecFwk::BundleInfo> &bundleInfos,
+        std::map<int32_t, std::vector<AppExecFwk::BundleInfo>> &bundleInfosMap,
+        std::vector<AppExecFwk::BundleInfo> &bundleInfosForU1);
 
 private:
     KeepAliveProcessManager();
