@@ -2731,6 +2731,18 @@ int AbilityManagerService::StartAbilityForOptionInner(const Want &want, const St
     HITRACE_METER_NAME(HITRACE_TAG_ABILITY_MANAGER, __PRETTY_FUNCTION__);
     StartAbilityContext ctx;
     auto eventInfo = BuildEventInfo(want, userId);
+    if (startOptions.windowCreateParams_ != nullptr) {
+        sptr<Rosen::WindowCreateParams> windowCreateParams =
+            new Rosen::WindowCreateParams(*startOptions.windowCreateParams_);
+        auto verifyRet = Rosen::MockSessionManagerService::GetInstance()
+            .VerifyParamsForStartAbilityToBottom(windowCreateParams);
+        if (verifyRet != ERR_OK) {
+            TAG_LOGE(AAFwkTag::ABILITYMGR, "VerifyParamsForStartAbilityToBottom failed: %{public}d", verifyRet);
+            AbilityEventUtil::SendStartAbilityErrorEvent(*eventInfo, static_cast<int>(verifyRet),
+                "VerifyParamsForStartAbilityToBottom failed");
+            return static_cast<int>(verifyRet);
+        }
+    }
     int32_t oriValidUserId = GetValidUserId(userId);
     // prevent the app from dominating the screen
     if (callerToken == nullptr && !IsCallerSceneBoard() && !isCallByShortcut &&
