@@ -171,6 +171,19 @@ std::string JsModuleReader::GetModuleName(const std::string& inputPath) const
     return inputPath.substr(inputPath.find_last_of("/") + 1);
 }
 
+std::string JsModuleReader::ToSandboxPath(const std::string& physicalPath, const std::string& inputPath,
+    const std::string& suffix)
+{
+    static const std::regex physicalPathPattern(
+        R"(^/data/app/el1/bundle/public/([^/.][^/]*)/v\d+(/|$))", std::regex::optimize);
+    const std::string sandboxPath =
+        std::regex_replace(physicalPath, physicalPathPattern, R"(/data/storage/el1/bundle/$1$2)");
+    if (sandboxPath == physicalPath) {
+        return std::string(ABS_CODE_PATH) + inputPath + suffix;
+    }
+    return sandboxPath;
+}
+
 std::string JsModuleReader::GetCommonAppHspPath(const std::string& inputPath,
     bool& needFindPluginHsp, std::string& errorMsg) const
 {
@@ -184,7 +197,11 @@ std::string JsModuleReader::GetCommonAppHspPath(const std::string& inputPath,
         }
     }
     if ((realHapPath.find(ABS_DATA_CODE_PATH) == 0) || (realHapPath == inputPath)) {
-        realHapPath = std::string(ABS_CODE_PATH) + inputPath + suffix;
+        if (inputPath.find_first_of("/") == inputPath.find_last_of("/")) {
+            realHapPath = std::string(ABS_CODE_PATH) + inputPath + suffix;
+        } else {
+            realHapPath = ToSandboxPath(realHapPath, inputPath, suffix);
+        }
     }
 
     TAG_LOGD(AAFwkTag::JSRUNTIME, "realHapPath: %{private}s", realHapPath.c_str());

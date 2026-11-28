@@ -51,6 +51,8 @@ private:
         std::string& errorMsg) const;
     std::string GetFormAppHspPath(const std::string& inputPath, bool& needFindPluginHsp, std::string& errorMsg) const;
     std::string GetModuleName(const std::string& inputPath) const;
+    static std::string ToSandboxPath(const std::string& physicalPath, const std::string& inputPath,
+        const std::string& suffix);
     std::string GetPluginHspPath(const std::string& inputPath) const;
     static std::string GetOtherHspPath(const std::string& bundleName, const std::string& moduleName,
         const std::string& inputPath, bool& needFindPluginHsp, std::string& errorMsg);

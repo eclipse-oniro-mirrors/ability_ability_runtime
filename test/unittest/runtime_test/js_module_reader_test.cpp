@@ -138,5 +138,33 @@ HWTEST_F(JsModuleReaderTest, GetPresetAppHapPath_0100, TestSize.Level2)
     auto realHapPath = jsModuleReader.GetPresetAppHapPath(inputPath, bundleName, needFindPluginHsp, errorMsg);
     EXPECT_EQ(realHapPath, "inputPath/inputPath2");
 }
+
+/**
+ * @tc.name: ToSandboxPathTest_0100
+ * @tc.desc: Verify a valid physical HSP path is converted to the sandbox path.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsModuleReaderTest, ToSandboxPathTest_0100, TestSize.Level2)
+{
+    const std::string inputPath = "bundle/com.example.provider/library";
+    const std::string physicalPath =
+        "/data/app/el1/bundle/public/com.example.provider/v1/library/library.hsp";
+    EXPECT_EQ(JsModuleReader::ToSandboxPath(physicalPath, inputPath, ".hsp"),
+        "/data/storage/el1/bundle/com.example.provider/library/library.hsp");
+}
+
+/**
+ * @tc.name: ToSandboxPathTest_0200
+ * @tc.desc: Verify path construction falls back when the physical path does not match.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsModuleReaderTest, ToSandboxPathTest_0200, TestSize.Level2)
+{
+    const std::string inputPath = "bundle/com.example.provider/library";
+    const std::string physicalPath =
+        "/data/app/el1/bundle/public/com.example.provider/vx/library.hsp";
+    EXPECT_EQ(JsModuleReader::ToSandboxPath(physicalPath, inputPath, ".hsp"),
+        "/data/storage/el1/bundle/com.example.provider/library.hsp");
+}
 }  // namespace AAFwk
 }  // namespace OHOS
