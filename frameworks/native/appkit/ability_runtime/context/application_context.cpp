@@ -1394,9 +1394,11 @@ void ApplicationContext::SetFont(const std::string &font, bool enableAnimation)
     AppExecFwk::Configuration config;
     config.AddItem(AppExecFwk::ConfigurationInner::APPLICATION_FONT, font);
     config.AddItem(AppExecFwk::ConfigurationInner::APPLICATION_FONT_ANIMATION, enableAnimation ? "true" : "false");
-    if (appFontCallback_ != nullptr) {
-        appFontCallback_(config);
+    if (appFontCallback_ == nullptr) {
+        TAG_LOGW(AAFwkTag::APPKIT, "null appFontCallback");
+        return;
     }
+    appFontCallback_(config);
     #endif
 }
 
