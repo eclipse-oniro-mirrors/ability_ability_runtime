@@ -65,6 +65,9 @@ public:
     int ipcGetCallingPid_ = 1;
     uint32_t ipcGetCallingTokenID_ = 1;
     uint32_t ipcGetSelfTokenID_ = 1;
+    std::string bundleNameForUid_;
+    int getNameForUidRet_ = -1;
+    bool mockGetJsonProfileSuccess_ = false;
     int permPermission_ = 1;
     int permConnectAgentFromBackground_ = 0;
     bool permVerifyBlockAllAppStartPermission_ = false;

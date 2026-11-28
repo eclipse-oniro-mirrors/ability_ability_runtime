@@ -12,15 +12,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <limits>
+
 #include <gtest/gtest.h>
 #include <unistd.h>
 #include "mock_my_status.h"
-
 #define private public
 #include "ability_manager_service.h"
 #undef private
 #include "ability_manager_errors.h"
 #include "hilog_tag_wrapper.h"
+#include "insight_intent_execute_manager.h"
+#include "insight_intent_will_execute_callback_stub.h"
 #include "rate_limiter.h"
 #include "sub_managers_helper.h"
 #include "ui_extension_ability_manager.h"
@@ -39,6 +42,7 @@ namespace AAFwk {
 namespace {
 constexpr int32_t EXTENSION_MAX_LIMIT = 50;
 constexpr int32_t GAME_SA_UID = 7800;
+constexpr int32_t FOUNDATION_UID = 5523;
 constexpr const char* DMS_CALLER_APP_ID = "ohos.dms.param.sourceCallerAppId";
 // Rate-limit window of RateLimiter::CheckExtensionLimit is 1s and the first tier is
 // EXTENSION_MAX_LIMIT, so the test loop must land 50+ calls inside one window. On
@@ -59,6 +63,30 @@ void BurstExtensionRateLimit(const std::shared_ptr<AbilityManagerService> &ams, 
         ams->CheckExtensionRateLimit(want);
     }
 }
+
+class MockWillExecuteCallback : public InsightIntentWillExecuteCallbackStub {
+public:
+    void OnWillInsightIntentExecute(const AppExecFwk::InsightIntentExecutionInfo &) override
+    {
+        ++callCount_;
+    }
+
+    int32_t callCount_ = 0;
+};
+
+class MyStatusGuard {
+public:
+    ~MyStatusGuard()
+    {
+        auto &status = MyStatus::GetInstance();
+        status.ipcGetCallingUid_ = 1;
+        status.getNameForUidRet_ = -1;
+        status.bundleNameForUid_.clear();
+        status.mockGetJsonProfileSuccess_ = false;
+        status.auIsForbidStart_ = false;
+    }
+};
+
 }
 class AbilityManagerServiceFourteenthTest : public testing::Test {
 public:
@@ -2393,6 +2421,178 @@ HWTEST_F(AbilityManagerServiceFourteenthTest, GetUIExtensionRootHostInfoById_040
     UIExtensionHostInfo hostInfo;
     EXPECT_EQ(abilityMs->GetUIExtensionRootHostInfoById(12025, hostInfo), ERR_INVALID_VALUE);
     TAG_LOGI(AAFwkTag::TEST, "AbilityManagerServiceFourteenthTest GetUIExtensionRootHostInfoById_0400 end");
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: ExecuteUIAbilityForegroundIntentWithSpecifyTokenId_0100
+ * Function: ExecuteUIAbilityForegroundIntentWithSpecifyTokenId
+ * SubFunction: NA
+ * FunctionPoints: a non-foundation caller is rejected by the UID guard
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest,
+    ExecuteUIAbilityForegroundIntentWithSpecifyTokenId_0100, TestSize.Level1)
+{
+    MyStatus::GetInstance().ipcGetCallingUid_ = 1;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    Want want;
+    AppExecFwk::InsightIntentExecuteLiteParam param;
+    EXPECT_EQ(abilityMs->ExecuteUIAbilityForegroundIntentWithSpecifyTokenId(want, nullptr, param, 0),
+        CHECK_PERMISSION_FAILED);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: ExecuteUIAbilityForegroundIntentWithSpecifyTokenId_0200
+ * Function: ExecuteUIAbilityForegroundIntentWithSpecifyTokenId
+ * SubFunction: NA
+ * FunctionPoints: a foundation caller without a caller token is rejected during prepare
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest,
+    ExecuteUIAbilityForegroundIntentWithSpecifyTokenId_0200, TestSize.Level1)
+{
+    MyStatusGuard guard;
+    MyStatus::GetInstance().ipcGetCallingUid_ = FOUNDATION_UID;
+    MyStatus::GetInstance().perJudgeCallerIsAllowedToUseSystemAPI_ = true;
+    MyStatus::GetInstance().permPermission_ = 1;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    Want want;
+    AppExecFwk::InsightIntentExecuteLiteParam param;
+    EXPECT_EQ(abilityMs->ExecuteUIAbilityForegroundIntentWithSpecifyTokenId(want, nullptr, param, 0),
+        ERR_INVALID_VALUE);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: NotifyInsightIntentExecute_0100
+ * Function: NotifyInsightIntentExecute
+ * SubFunction: NA
+ * FunctionPoints: an unknown intent id is rejected
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, NotifyInsightIntentExecute_0100, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    EXPECT_EQ(abilityMs->NotifyInsightIntentExecute(std::numeric_limits<uint64_t>::max()),
+        ERR_INVALID_VALUE);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: NotifyInsightIntentExecute_0200
+ * Function: NotifyInsightIntentExecute
+ * SubFunction: NA
+ * FunctionPoints: a caller bundle mismatch is rejected
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, NotifyInsightIntentExecute_0200, TestSize.Level1)
+{
+    MyStatusGuard guard;
+    MyStatus::GetInstance().bundleNameForUid_ = "com.test.caller";
+    MyStatus::GetInstance().getNameForUidRet_ = 0;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    auto executeManager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(executeManager, nullptr);
+    uint64_t intentId = 0;
+    ASSERT_EQ(executeManager->RegisterExecuteRecord(1, nullptr, "com.test.target", ExecuteParam{}, intentId),
+        ERR_OK);
+    EXPECT_EQ(abilityMs->NotifyInsightIntentExecute(intentId), CHECK_PERMISSION_FAILED);
+    (void)executeManager->RemoveExecuteIntent(intentId);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: NotifyInsightIntentExecute_0300
+ * Function: NotifyInsightIntentExecute
+ * SubFunction: NA
+ * FunctionPoints: a matching caller bundle passes and updates the target pid
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest, NotifyInsightIntentExecute_0300, TestSize.Level1)
+{
+    MyStatusGuard guard;
+    MyStatus::GetInstance().ipcGetCallingUid_ = 1001;
+    MyStatus::GetInstance().bundleNameForUid_ = "com.test.target";
+    MyStatus::GetInstance().getNameForUidRet_ = 0;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+
+    auto executeManager = DelayedSingleton<InsightIntentExecuteManager>::GetInstance();
+    ASSERT_NE(executeManager, nullptr);
+    uint64_t intentId = 0;
+    ASSERT_EQ(executeManager->RegisterExecuteRecord(1, nullptr, "com.test.target", ExecuteParam{}, intentId),
+        ERR_OK);
+    EXPECT_EQ(abilityMs->NotifyInsightIntentExecute(intentId), ERR_OK);
+    (void)executeManager->RemoveExecuteIntent(intentId);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: RegisterWillInsightIntentExecuteCallback_0100
+ * Function: RegisterWillInsightIntentExecuteCallback
+ * SubFunction: NA
+ * FunctionPoints: a null callback is rejected
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest,
+    RegisterWillInsightIntentExecuteCallback_0100, TestSize.Level1)
+{
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    EXPECT_EQ(abilityMs->RegisterWillInsightIntentExecuteCallback(nullptr), ERR_INVALID_VALUE);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: RegisterWillInsightIntentExecuteCallback_0200
+ * Function: RegisterWillInsightIntentExecuteCallback
+ * SubFunction: NA
+ * FunctionPoints: a valid callback is registered and notified for the caller pid
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest,
+    RegisterWillInsightIntentExecuteCallback_0200, TestSize.Level1)
+{
+    MyStatusGuard guard;
+    MyStatus::GetInstance().ipcGetCallingUid_ = 1001;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    auto callback = sptr<MockWillExecuteCallback>::MakeSptr();
+    ASSERT_NE(callback, nullptr);
+
+    EXPECT_EQ(abilityMs->RegisterWillInsightIntentExecuteCallback(callback), ERR_OK);
+    AppExecFwk::InsightIntentExecutionInfo info;
+    DelayedSingleton<InsightIntentExecuteManager>::GetInstance()
+        ->NotifyInsightIntentWillExecute(1001, info);
+    EXPECT_EQ(callback->callCount_, 1);
+    EXPECT_EQ(abilityMs->UnregisterWillInsightIntentExecuteCallback(), ERR_OK);
+}
+
+/*
+ * Feature: AbilityManagerService
+ * Name: UnregisterWillInsightIntentExecuteCallback_0100
+ * Function: UnregisterWillInsightIntentExecuteCallback
+ * SubFunction: NA
+ * FunctionPoints: an unregistered callback is no longer notified
+ */
+HWTEST_F(AbilityManagerServiceFourteenthTest,
+    UnregisterWillInsightIntentExecuteCallback_0100, TestSize.Level1)
+{
+    MyStatusGuard guard;
+    MyStatus::GetInstance().ipcGetCallingUid_ = 1002;
+    auto abilityMs = std::make_shared<AbilityManagerService>();
+    ASSERT_NE(abilityMs, nullptr);
+    auto callback = sptr<MockWillExecuteCallback>::MakeSptr();
+    ASSERT_NE(callback, nullptr);
+
+    EXPECT_EQ(abilityMs->RegisterWillInsightIntentExecuteCallback(callback), ERR_OK);
+    EXPECT_EQ(abilityMs->UnregisterWillInsightIntentExecuteCallback(), ERR_OK);
+    AppExecFwk::InsightIntentExecutionInfo info;
+    DelayedSingleton<InsightIntentExecuteManager>::GetInstance()
+        ->NotifyInsightIntentWillExecute(1002, info);
+    EXPECT_EQ(callback->callCount_, 0);
 }
 } // namespace AAFwk
 } // namespace OHOS
