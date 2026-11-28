@@ -2625,5 +2625,115 @@ HWTEST_F(ExtractInsightIntentProfileTest, Exported_Persisted_RoundTrip_0100, Tes
     ASSERT_EQ(infos2.insightIntents.size(), 1u);
     EXPECT_TRUE(infos2.insightIntents[0].exported);
 }
+
+/**
+ * @tc.number: Permissions_Valid_0100
+ * @tc.name: Permissions_Valid_0100
+ * @tc.desc: WHEN permissions are valid THEN TransformTo keeps them and ProfileInfoFormat forwards them.
+ */
+HWTEST_F(ExtractInsightIntentProfileTest, Permissions_Valid_0100, TestSize.Level0)
+{
+    auto jsonObject = nlohmann::json::parse(profileJsonStr, nullptr, false);
+    ASSERT_FALSE(jsonObject.is_discarded());
+    jsonObject["extractInsightIntents"][0]["permissions"] =
+        nlohmann::json::array({"ohos.permission.READ", "ohos.permission.WRITE"});
+    ExtractInsightIntentProfileInfoVec infos;
+    EXPECT_TRUE(ExtractInsightIntentProfile::TransformTo(jsonObject.dump(), infos));
+    ASSERT_EQ(infos.insightIntents.size(), 2);
+    ASSERT_EQ(infos.insightIntents[0].permissions.size(), 2);
+    EXPECT_EQ(infos.insightIntents[0].permissions[0], "ohos.permission.READ");
+    EXPECT_EQ(infos.insightIntents[0].permissions[1], "ohos.permission.WRITE");
+    EXPECT_TRUE(infos.insightIntents[1].permissions.empty());
+    ExtractInsightIntentInfo formatted;
+    EXPECT_TRUE(ExtractInsightIntentProfile::ProfileInfoFormat(infos.insightIntents[0], formatted));
+    EXPECT_EQ(formatted.permissions.size(), 2);
+}
+
+/**
+ * @tc.number: Permissions_InvalidPrefix_0200
+ * @tc.name: Permissions_InvalidPrefix_0200
+ * @tc.desc: WHEN a permission misses the ohos.permission prefix THEN TransformTo rejects the profile.
+ */
+HWTEST_F(ExtractInsightIntentProfileTest, Permissions_InvalidPrefix_0200, TestSize.Level0)
+{
+    auto jsonObject = nlohmann::json::parse(profileJsonStr, nullptr, false);
+    ASSERT_FALSE(jsonObject.is_discarded());
+    jsonObject["extractInsightIntents"][0]["permissions"] = nlohmann::json::array({"invalid.permission"});
+    ExtractInsightIntentProfileInfoVec infos;
+    EXPECT_FALSE(ExtractInsightIntentProfile::TransformTo(jsonObject.dump(), infos));
+}
+
+/**
+ * @tc.number: Permissions_EmptyName_0300
+ * @tc.name: Permissions_EmptyName_0300
+ * @tc.desc: WHEN a permission is empty THEN TransformTo rejects the profile.
+ */
+HWTEST_F(ExtractInsightIntentProfileTest, Permissions_EmptyName_0300, TestSize.Level0)
+{
+    auto jsonObject = nlohmann::json::parse(profileJsonStr, nullptr, false);
+    ASSERT_FALSE(jsonObject.is_discarded());
+    jsonObject["extractInsightIntents"][0]["permissions"] = nlohmann::json::array({""});
+    ExtractInsightIntentProfileInfoVec infos;
+    EXPECT_FALSE(ExtractInsightIntentProfile::TransformTo(jsonObject.dump(), infos));
+}
+
+/**
+ * @tc.number: Permissions_CountLimit_0400
+ * @tc.name: Permissions_CountLimit_0400
+ * @tc.desc: WHEN permission count is within/over 64 THEN the profile is accepted/rejected accordingly.
+ */
+HWTEST_F(ExtractInsightIntentProfileTest, Permissions_CountLimit_0400, TestSize.Level0)
+{
+    auto jsonObject = nlohmann::json::parse(profileJsonStr, nullptr, false);
+    ASSERT_FALSE(jsonObject.is_discarded());
+    nlohmann::json permissions = nlohmann::json::array();
+    for (int32_t i = 0; i < 64; i++) {
+        permissions.push_back("ohos.permission.P" + std::to_string(i));
+    }
+    jsonObject["extractInsightIntents"][0]["permissions"] = permissions;
+    ExtractInsightIntentProfileInfoVec infos;
+    EXPECT_TRUE(ExtractInsightIntentProfile::TransformTo(jsonObject.dump(), infos));
+    ASSERT_EQ(infos.insightIntents.size(), 2);
+    EXPECT_EQ(infos.insightIntents[0].permissions.size(), 64);
+    permissions.push_back("ohos.permission.OVER_LIMIT");
+    jsonObject["extractInsightIntents"][0]["permissions"] = permissions;
+    infos.insightIntents.clear();
+    EXPECT_FALSE(ExtractInsightIntentProfile::TransformTo(jsonObject.dump(), infos));
+}
+
+/**
+ * @tc.number: Permissions_ToJson_0500
+ * @tc.name: Permissions_ToJson_0500
+ * @tc.desc: WHEN serializing intent info THEN permissions are written to the permissions field.
+ */
+HWTEST_F(ExtractInsightIntentProfileTest, Permissions_ToJson_0500, TestSize.Level0)
+{
+    ExtractInsightIntentProfileInfo info;
+    info.intentName = "testIntent";
+    info.permissions = {"ohos.permission.READ"};
+    nlohmann::json jsonObject;
+    EXPECT_TRUE(ExtractInsightIntentProfile::ToJson(info, jsonObject));
+    ASSERT_TRUE(jsonObject.contains("extractInsightIntents"));
+    EXPECT_EQ(jsonObject["extractInsightIntents"][0]["permissions"][0], "ohos.permission.READ");
+}
+
+/**
+ * @tc.number: ToJson_EmptyDynamicField_0600
+ * @tc.name: ToJson_EmptyDynamicField_0600
+ * @tc.desc: WHEN parameters and result are empty THEN they are omitted from the JSON output.
+ */
+HWTEST_F(ExtractInsightIntentProfileTest, ToJson_EmptyDynamicField_0600, TestSize.Level0)
+{
+    ExtractInsightIntentProfileInfo info;
+    info.intentName = "testIntent";
+    info.parameters = "";
+    info.result = "";
+    nlohmann::json jsonObject;
+    EXPECT_TRUE(ExtractInsightIntentProfile::ToJson(info, jsonObject));
+    ASSERT_TRUE(jsonObject.contains("extractInsightIntents"));
+    EXPECT_FALSE(jsonObject["extractInsightIntents"][0].contains("parameters"));
+    EXPECT_FALSE(jsonObject["extractInsightIntents"][0].contains("result"));
+}
+
 }  // namespace AbilityRuntime
 }  // namespace OHOS

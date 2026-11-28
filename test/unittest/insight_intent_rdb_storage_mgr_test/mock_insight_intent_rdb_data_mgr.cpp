@@ -27,7 +27,24 @@ bool g_mockDeleteDataRet = true;
 bool g_mockDeleteDataBeginWithKeyRet = true;
 std::string g_mockQueryDataKey = "";
 std::unordered_map<std::string, std::string> g_mockQueryDatas;
+std::vector<std::string> g_mockInsertedKeys;
+std::string g_mockDeleteDataBeginWithKeyKey = "";
 bool g_mockDeleteDataBeginWithKeyCalled = false;
+
+void MockInsertedKeysClear()
+{
+    g_mockInsertedKeys.clear();
+}
+
+std::vector<std::string> GetMockInsertedKeys()
+{
+    return g_mockInsertedKeys;
+}
+
+std::string GetMockDeleteDataBeginWithKeyKey()
+{
+    return g_mockDeleteDataBeginWithKeyKey;
+}
 
 void MockQueryData(bool mockRet)
 {
@@ -121,6 +138,7 @@ bool InsightIntentRdbDataMgr::QueryDataBeginWithKey(const std::string &key,
 
 bool InsightIntentRdbDataMgr::InsertData(const std::string &key, const std::string &value)
 {
+    g_mockInsertedKeys.push_back(key);
     if (g_mockInsertDataRet) {
         return true;
     }
@@ -129,6 +147,9 @@ bool InsightIntentRdbDataMgr::InsertData(const std::string &key, const std::stri
 
 bool InsightIntentRdbDataMgr::BatchInsertData(const std::vector<std::pair<std::string, std::string>> &keyValues)
 {
+    for (const auto &keyValue : keyValues) {
+        g_mockInsertedKeys.push_back(keyValue.first);
+    }
     if (g_mockBatchInsertDataRet) {
         return true;
     }
@@ -146,6 +167,7 @@ bool InsightIntentRdbDataMgr::DeleteData(const std::string &key)
 bool InsightIntentRdbDataMgr::DeleteDataBeginWithKey(const std::string &key)
 {
     g_mockDeleteDataBeginWithKeyCalled = true;
+    g_mockDeleteDataBeginWithKeyKey = key;
     if (g_mockDeleteDataBeginWithKeyRet) {
         return true;
     }

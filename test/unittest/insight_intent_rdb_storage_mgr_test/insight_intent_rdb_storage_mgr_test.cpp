@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 
 #include "errors.h"
+#include "global_constant.h"
 #include "insight_intent_rdb_storage_mgr.h"
 
 using namespace testing::ext;
@@ -33,6 +34,9 @@ void MockQueryDataBeginWithKeyDataClear();
 std::string GetMockQueryDataKey();
 void MockDeleteDataBeginWithKeyCalledReset();
 bool GetMockDeleteDataBeginWithKeyCalled();
+void MockInsertedKeysClear();
+std::vector<std::string> GetMockInsertedKeys();
+std::string GetMockDeleteDataBeginWithKeyKey();
 
 class InsightIntentRdbStorageMgrTest : public testing::Test {
 public:
@@ -50,6 +54,7 @@ void InsightIntentRdbStorageMgrTest::TearDownTestCase()
 void InsightIntentRdbStorageMgrTest::SetUp()
 {
     MockQueryDataBeginWithKeyDataClear();
+    MockInsertedKeysClear();
     MockDeleteDataBeginWithKeyCalledReset();
 }
 
@@ -1034,6 +1039,151 @@ HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_047, Tes
     EXPECT_EQ(bundleVersionMap["testBundle"], "1");
     EXPECT_EQ(bundleVersionMap["anotherBundle"], "2");
     EXPECT_EQ(bundleVersionMap.count("invalidBundle"), 0u);
+}
+
+/**
+ * @tc.name: InsightIntentRdbStorageMgrTest_SaveCloneKey_048
+ * @tc.desc: SaveStorageInsightIntentData writes the clone key for a dual-mode appIndex.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_SaveCloneKey_048, TestSize.Level0)
+{
+    int32_t userId = 0;
+    std::string bundleName = "testBundle";
+    std::string moduleName = "testModule";
+    uint32_t versionCode = 1;
+    int32_t appIndex = GlobalConstant::PC_TABLET_INDEX;
+    const std::string cloneIndex = "clone-" + std::to_string(GlobalConstant::PC_TABLET_INDEX);
+    ExtractInsightIntentProfileInfoVec profileInfos;
+    std::vector<InsightIntentInfo> configInfos;
+    ExtractInsightIntentProfileInfo profileInfo;
+    profileInfo.intentName = "testIntent";
+    profileInfos.insightIntents.push_back(profileInfo);
+    InsightIntentInfo configInfo;
+    configInfo.intentName = "testConfigIntent";
+    configInfos.push_back(configInfo);
+
+    MockInsertData(true);
+    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->SaveStorageInsightIntentData(
+        InsightIntentSaveParam{bundleName, moduleName, versionCode, userId, {}, {}, appIndex},
+        profileInfos, configInfos);
+    EXPECT_EQ(result, ERR_OK);
+    auto keys = GetMockInsertedKeys();
+    ASSERT_EQ(keys.size(), 2u);
+    EXPECT_EQ(keys[0], "0/testBundle/" + cloneIndex + "/testModule/testIntent/1");
+    EXPECT_EQ(keys[1], "0/testBundle/" + cloneIndex + "/testModule/testConfigIntent/1");
+}
+
+/**
+ * @tc.name: InsightIntentRdbStorageMgrTest_SaveBatchCloneKey_049
+ * @tc.desc: Batch save keeps each module's own appIndex in the clone key.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_SaveBatchCloneKey_049, TestSize.Level0)
+{
+    int32_t userId = 0;
+    std::string bundleName = "testBundle";
+    const std::string cloneIndex = "clone-" + std::to_string(GlobalConstant::PC_TABLET_INDEX);
+    InsightIntentSaveParam firstParam;
+    firstParam.bundleName = bundleName;
+    firstParam.moduleName = "moduleClone";
+    firstParam.versionCode = 2;
+    firstParam.userId = userId;
+    firstParam.appIndex = GlobalConstant::PC_TABLET_INDEX;
+    ExtractInsightIntentProfileInfo firstProfile;
+    firstProfile.intentName = "intentA";
+    firstParam.profileInfos.insightIntents.push_back(firstProfile);
+    InsightIntentSaveParam secondParam;
+    secondParam.bundleName = bundleName;
+    secondParam.moduleName = "module0";
+    secondParam.versionCode = 2;
+    secondParam.userId = userId;
+    secondParam.appIndex = 0;
+    ExtractInsightIntentProfileInfo secondProfile;
+    secondProfile.intentName = "intentB";
+    secondParam.profileInfos.insightIntents.push_back(secondProfile);
+    std::vector<InsightIntentSaveParam> saveParams{firstParam, secondParam};
+
+    MockBatchInsertData(true);
+    auto result = DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->SaveStorageInsightIntentDataBatch(
+        saveParams);
+    EXPECT_EQ(result, ERR_OK);
+    auto keys = GetMockInsertedKeys();
+    ASSERT_EQ(keys.size(), 2u);
+    EXPECT_EQ(keys[0], "0/testBundle/" + cloneIndex + "/moduleClone/intentA/2");
+    EXPECT_EQ(keys[1], "0/testBundle/clone-0/module0/intentB/2");
+}
+
+/**
+ * @tc.name: InsightIntentRdbStorageMgrTest_LoadDeleteClonePrefix_050
+ * @tc.desc: Load/delete APIs use the clone prefix when an explicit appIndex is provided.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_LoadDeleteClonePrefix_050, TestSize.Level0)
+{
+    int32_t userId = 0;
+    std::string bundleName = "testBundle";
+    std::string moduleName = "testModule";
+    std::string intentName = "testIntent";
+    const std::string clonePrefix = "0/testBundle/clone-" +
+        std::to_string(GlobalConstant::PC_TABLET_INDEX) + "/";
+    IntentKey key{bundleName, moduleName, intentName, userId, GlobalConstant::PC_TABLET_INDEX};
+    ExtractInsightIntentInfo intentInfo;
+    InsightIntentInfo configInfo;
+    std::vector<ExtractInsightIntentInfo> intentInfos;
+    std::vector<InsightIntentInfo> configInfos;
+
+    MockQueryDataBeginWithKey(true);
+    EXPECT_EQ(DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentInfo(key, intentInfo),
+        ERR_OK);
+    EXPECT_EQ(GetMockQueryDataKey(), clonePrefix + "testModule/testIntent/");
+    EXPECT_EQ(DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadConfigInsightIntentInfo(
+        key, configInfo), ERR_OK);
+    EXPECT_EQ(GetMockQueryDataKey(), clonePrefix + "testModule/testIntent/");
+    EXPECT_EQ(DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentInfoByName(
+        IntentKey{bundleName, "", "", userId, GlobalConstant::PC_TABLET_INDEX}, intentInfos), ERR_OK);
+    EXPECT_EQ(GetMockQueryDataKey(), clonePrefix);
+    EXPECT_EQ(DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadConfigInsightIntentInfoByName(
+        IntentKey{bundleName, "", "", userId, GlobalConstant::PC_TABLET_INDEX}, configInfos), ERR_OK);
+    EXPECT_EQ(GetMockQueryDataKey(), clonePrefix);
+
+    MockDeleteDataBeginWithKey(true);
+    EXPECT_EQ(DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->DeleteStorageInsightIntentData(
+        key), ERR_OK);
+    EXPECT_EQ(GetMockDeleteDataBeginWithKeyKey(), clonePrefix + "testModule/");
+    EXPECT_EQ(DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->DeleteStorageInsightIntentData(
+        IntentKey{bundleName, "", "", userId, GlobalConstant::PC_TABLET_INDEX}), ERR_OK);
+    EXPECT_EQ(GetMockDeleteDataBeginWithKeyKey(), clonePrefix);
+}
+
+/**
+ * @tc.name: InsightIntentRdbStorageMgrTest_ParseSixSegmentKey_051
+ * @tc.desc: Six-segment clone keys are parsed into a bundle/clone index map key.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentRdbStorageMgrTest, InsightIntentRdbStorageMgrTest_ParseSixSegmentKey_051, TestSize.Level0)
+{
+    int32_t userId = 0;
+    const std::string cloneIndex = "clone-" + std::to_string(GlobalConstant::PC_TABLET_INDEX);
+    std::map<std::string, std::string> bundleVersionMap;
+    std::vector<ExtractInsightIntentInfo> totalInfos;
+    std::vector<InsightIntentInfo> configInfos;
+    EXPECT_EQ(FormatAppIndex(GlobalConstant::PC_TABLET_INDEX), cloneIndex);
+    EXPECT_EQ(FormatAppIndex(0), "clone-0");
+
+    MockQueryDataBeginWithKey(true);
+    MockQueryDataBeginWithKeyData("0/testBundle/" + cloneIndex + "/testModule/testIntent/7", "value");
+    MockQueryDataBeginWithKeyData("0/plainBundle/plainModule/plainIntent/8", "value");
+    EXPECT_EQ(DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentBundleInfos(
+        userId, bundleVersionMap), ERR_OK);
+    EXPECT_EQ(bundleVersionMap["testBundle/" + cloneIndex], "7");
+    EXPECT_EQ(bundleVersionMap["plainBundle"], "8");
+
+    bundleVersionMap.clear();
+    EXPECT_EQ(DelayedSingleton<InsightRdbStorageMgr>::GetInstance()->LoadInsightIntentInfos(
+        userId, bundleVersionMap, totalInfos, configInfos), ERR_OK);
+    EXPECT_EQ(bundleVersionMap["testBundle/" + cloneIndex], "7");
+    EXPECT_EQ(bundleVersionMap["plainBundle"], "8");
 }
 }
 }

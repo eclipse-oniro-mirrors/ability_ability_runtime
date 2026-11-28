@@ -445,5 +445,93 @@ HWTEST_F(InsightIntentProfileTest, ToJson_0400, TestSize.Level2)
     EXPECT_TRUE(result);
 }
 
+/**
+ * @tc.number: Permissions_Valid_0100
+ * @tc.name: Permissions_Valid_0100
+ * @tc.desc: WHEN permissions are valid THEN TransformTo keeps them in intent info.
+ */
+HWTEST_F(InsightIntentProfileTest, Permissions_Valid_0100, TestSize.Level2)
+{
+    auto jsonObject = nlohmann::json::parse(profileJsonStr, nullptr, false);
+    ASSERT_FALSE(jsonObject.is_discarded());
+    jsonObject["insightIntents"][0]["permissions"] =
+        nlohmann::json::array({"ohos.permission.READ", "ohos.permission.WRITE"});
+    std::vector<InsightIntentInfo> intentInfos;
+    EXPECT_TRUE(InsightIntentProfile::TransformTo(jsonObject.dump(), intentInfos));
+    ASSERT_EQ(intentInfos.size(), 2);
+    ASSERT_EQ(intentInfos[0].permissions.size(), 2);
+    EXPECT_EQ(intentInfos[0].permissions[0], "ohos.permission.READ");
+    EXPECT_EQ(intentInfos[0].permissions[1], "ohos.permission.WRITE");
+    EXPECT_TRUE(intentInfos[1].permissions.empty());
+}
+
+/**
+ * @tc.number: Permissions_InvalidPrefix_0200
+ * @tc.name: Permissions_InvalidPrefix_0200
+ * @tc.desc: WHEN a permission misses the ohos.permission prefix THEN TransformTo rejects the profile.
+ */
+HWTEST_F(InsightIntentProfileTest, Permissions_InvalidPrefix_0200, TestSize.Level2)
+{
+    auto jsonObject = nlohmann::json::parse(profileJsonStr, nullptr, false);
+    ASSERT_FALSE(jsonObject.is_discarded());
+    jsonObject["insightIntents"][0]["permissions"] = nlohmann::json::array({"invalid.permission"});
+    std::vector<InsightIntentInfo> intentInfos;
+    EXPECT_FALSE(InsightIntentProfile::TransformTo(jsonObject.dump(), intentInfos));
+}
+
+/**
+ * @tc.number: Permissions_EmptyName_0300
+ * @tc.name: Permissions_EmptyName_0300
+ * @tc.desc: WHEN a permission is empty THEN TransformTo rejects the profile.
+ */
+HWTEST_F(InsightIntentProfileTest, Permissions_EmptyName_0300, TestSize.Level2)
+{
+    auto jsonObject = nlohmann::json::parse(profileJsonStr, nullptr, false);
+    ASSERT_FALSE(jsonObject.is_discarded());
+    jsonObject["insightIntents"][0]["permissions"] = nlohmann::json::array({""});
+    std::vector<InsightIntentInfo> intentInfos;
+    EXPECT_FALSE(InsightIntentProfile::TransformTo(jsonObject.dump(), intentInfos));
+}
+
+/**
+ * @tc.number: Permissions_CountLimit_0400
+ * @tc.name: Permissions_CountLimit_0400
+ * @tc.desc: WHEN permission count is within/over 64 THEN the profile is accepted/rejected accordingly.
+ */
+HWTEST_F(InsightIntentProfileTest, Permissions_CountLimit_0400, TestSize.Level2)
+{
+    auto jsonObject = nlohmann::json::parse(profileJsonStr, nullptr, false);
+    ASSERT_FALSE(jsonObject.is_discarded());
+    nlohmann::json permissions = nlohmann::json::array();
+    for (int32_t i = 0; i < 64; i++) {
+        permissions.push_back("ohos.permission.P" + std::to_string(i));
+    }
+    jsonObject["insightIntents"][0]["permissions"] = permissions;
+    std::vector<InsightIntentInfo> intentInfos;
+    EXPECT_TRUE(InsightIntentProfile::TransformTo(jsonObject.dump(), intentInfos));
+    ASSERT_EQ(intentInfos.size(), 2);
+    EXPECT_EQ(intentInfos[0].permissions.size(), 64);
+    permissions.push_back("ohos.permission.OVER_LIMIT");
+    jsonObject["insightIntents"][0]["permissions"] = permissions;
+    intentInfos.clear();
+    EXPECT_FALSE(InsightIntentProfile::TransformTo(jsonObject.dump(), intentInfos));
+}
+
+/**
+ * @tc.number: Permissions_ToJson_0500
+ * @tc.name: Permissions_ToJson_0500
+ * @tc.desc: WHEN serializing intent info THEN permissions are written to the permissions field.
+ */
+HWTEST_F(InsightIntentProfileTest, Permissions_ToJson_0500, TestSize.Level2)
+{
+    InsightIntentInfo info;
+    info.intentName = "testIntent";
+    info.permissions = {"ohos.permission.READ"};
+    nlohmann::json jsonObject;
+    EXPECT_TRUE(InsightIntentProfile::ToJson(info, jsonObject));
+    ASSERT_TRUE(jsonObject.contains("insightIntents"));
+    EXPECT_EQ(jsonObject["insightIntents"][0]["permissions"][0], "ohos.permission.READ");
+}
+
 }  // namespace AbilityRuntime
 }  // namespace OHOS

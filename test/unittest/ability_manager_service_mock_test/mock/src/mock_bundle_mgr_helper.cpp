@@ -133,6 +133,12 @@ ErrCode BundleMgrHelper::GetBundleInfosV9(int32_t flags,
     return ERR_OK;
 }
 
+ErrCode BundleMgrHelper::GetLauncherAbilityInfoSync(
+    const std::string &bundleName, int32_t userId, std::vector<AbilityInfo> &abilityInfo)
+{
+    return ERR_OK;
+}
+
 ErrCode BundleMgrHelper::GetCloneBundleInfo(const std::string &bundleName, int32_t flags, int32_t appCloneIndex,
     BundleInfo &bundleInfo, int32_t userId)
 {

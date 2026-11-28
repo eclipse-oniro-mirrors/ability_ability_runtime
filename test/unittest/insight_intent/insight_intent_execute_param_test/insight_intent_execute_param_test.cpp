@@ -1130,5 +1130,76 @@ HWTEST_F(InsightIntentExecuteParamTest, GetFileEntityUrisAndFlags_1300, TestSize
     EXPECT_EQ(flags[1], TEST_FLAG_WRITE);
     EXPECT_EQ(uriGroups[1][199], "file:///data/b199.txt");
 }
+/**
+ * @tc.name: CallerIdentity_GenerateFromWant_0100
+ * @tc.desc: GenerateFromWant reads caller bundle/token/uid from the execute param want.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, CallerIdentity_GenerateFromWant_0100, TestSize.Level1)
+{
+    WantParams wantParams;
+    wantParams.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_NAME,
+        AAFwk::String::Box(TEST_INSIGHT_INTENT_NANE));
+    wantParams.SetParam(AppExecFwk::INSIGHT_INTENT_EXECUTE_PARAM_ID, AAFwk::String::Box("1"));
+    wantParams.SetParam(AppExecFwk::INSIGHT_INTENT_CALLER_BUNDLE_NAME,
+        AAFwk::String::Box("caller.bundle"));
+    wantParams.SetParam(AppExecFwk::INSIGHT_INTENT_CALLER_TOKEN_ID, AAFwk::String::Box("1001"));
+    wantParams.SetParam(AppExecFwk::INSIGHT_INTENT_CALLER_UID, AAFwk::Integer::Box(2001));
+    Want want;
+    want.SetElementName("", TEST_BUNDLE_NANE, TEST_ABILITY_NANE, TEST_MODULE_NANE);
+    want.SetParams(wantParams);
+    InsightIntentExecuteParam executeParam;
+    EXPECT_TRUE(InsightIntentExecuteParam::GenerateFromWant(want, executeParam));
+    EXPECT_EQ(executeParam.callerBundleName_, "caller.bundle");
+    EXPECT_EQ(executeParam.callerTokenId_, "1001");
+    EXPECT_EQ(executeParam.callerUid_, 2001);
+}
+
+/**
+ * @tc.name: CallerIdentity_MarshallingUnmarshalling_0100
+ * @tc.desc: Caller identity survives a Marshalling/ReadFromParcel round trip.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, CallerIdentity_MarshallingUnmarshalling_0100, TestSize.Level1)
+{
+    InsightIntentExecuteParam originalParam;
+    originalParam.bundleName_ = TEST_BUNDLE_NANE;
+    originalParam.moduleName_ = TEST_MODULE_NANE;
+    originalParam.abilityName_ = TEST_ABILITY_NANE;
+    originalParam.insightIntentName_ = TEST_INSIGHT_INTENT_NANE;
+    originalParam.insightIntentParam_ = std::make_shared<WantParams>();
+    originalParam.callerBundleName_ = "caller.bundle";
+    originalParam.callerTokenId_ = "1001";
+    originalParam.callerUid_ = 2001;
+    Parcel parcel;
+    ASSERT_TRUE(originalParam.Marshalling(parcel));
+    InsightIntentExecuteParam restored;
+    ASSERT_TRUE(restored.ReadFromParcel(parcel));
+    EXPECT_EQ(restored.callerBundleName_, "caller.bundle");
+    EXPECT_EQ(restored.callerTokenId_, "1001");
+    EXPECT_EQ(restored.callerUid_, 2001);
+}
+
+/**
+ * @tc.name: CallerIdentity_RemoveInsightIntent_0100
+ * @tc.desc: RemoveInsightIntent strips the caller identity parameters.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InsightIntentExecuteParamTest, CallerIdentity_RemoveInsightIntent_0100, TestSize.Level1)
+{
+    WantParams wantParams;
+    wantParams.SetParam(AppExecFwk::INSIGHT_INTENT_CALLER_BUNDLE_NAME,
+        AAFwk::String::Box("caller.bundle"));
+    wantParams.SetParam(AppExecFwk::INSIGHT_INTENT_CALLER_TOKEN_ID, AAFwk::String::Box("1001"));
+    wantParams.SetParam(AppExecFwk::INSIGHT_INTENT_CALLER_UID, AAFwk::Integer::Box(2001));
+    Want want;
+    want.SetParams(wantParams);
+    InsightIntentExecuteParam executeParam;
+    EXPECT_TRUE(executeParam.RemoveInsightIntent(want));
+    EXPECT_FALSE(want.HasParameter(AppExecFwk::INSIGHT_INTENT_CALLER_BUNDLE_NAME));
+    EXPECT_FALSE(want.HasParameter(AppExecFwk::INSIGHT_INTENT_CALLER_TOKEN_ID));
+    EXPECT_FALSE(want.HasParameter(AppExecFwk::INSIGHT_INTENT_CALLER_UID));
+}
+
 } // namespace AAFwk
 } // namespace OHOS
