@@ -1463,6 +1463,132 @@ HWTEST_F(AbilityManagerClientBranchThirdTest, DisplayInfoTest_0100, TestSize.Lev
 }
 
 /**
+ * @tc.name: AddKioskApplicationList_0100
+ * @tc.desc: Test AddKioskApplicationList with proxy not connected
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, AddKioskApplicationList_0100, TestSize.Level1)
+{
+    client_->proxy_ = nullptr;
+    EXPECT_CALL(*mockSystemAbility_, GetSystemAbility(testing::_)).WillRepeatedly(Return(nullptr));
+
+    std::vector<std::string> appList = {"com.ohos.test1"};
+    auto ret = client_->AddKioskApplicationList(appList);
+    EXPECT_EQ(ret, ABILITY_SERVICE_NOT_CONNECTED);
+}
+
+/**
+ * @tc.name: AddKioskApplicationList_0200
+ * @tc.desc: Test AddKioskApplicationList with proxy connected and arguments forwarded
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, AddKioskApplicationList_0200, TestSize.Level1)
+{
+    client_->proxy_ = mock_;
+    std::vector<std::string> appList = {"com.ohos.test1", "com.ohos.test2"};
+    EXPECT_CALL(*mock_, AddKioskApplicationList(appList))
+        .Times(1)
+        .WillOnce(Return(ERR_OK));
+    auto ret = client_->AddKioskApplicationList(appList);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: AddKioskApplicationList_0300
+ * @tc.desc: Test AddKioskApplicationList propagates downstream error code
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, AddKioskApplicationList_0300, TestSize.Level1)
+{
+    client_->proxy_ = mock_;
+    std::vector<std::string> appList = {"com.ohos.test1"};
+    EXPECT_CALL(*mock_, AddKioskApplicationList(testing::_))
+        .Times(1)
+        .WillOnce(Return(CHECK_PERMISSION_FAILED));
+    auto ret = client_->AddKioskApplicationList(appList);
+    EXPECT_EQ(ret, CHECK_PERMISSION_FAILED);
+}
+
+/**
+ * @tc.name: AddKioskApplicationList_0400
+ * @tc.desc: Test AddKioskApplicationList forwards an empty appList boundary input
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, AddKioskApplicationList_0400, TestSize.Level1)
+{
+    client_->proxy_ = mock_;
+    std::vector<std::string> appList;
+    EXPECT_CALL(*mock_, AddKioskApplicationList(appList))
+        .Times(1)
+        .WillOnce(Return(ERR_OK));
+    auto ret = client_->AddKioskApplicationList(appList);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: DeleteKioskApplicationList_0100
+ * @tc.desc: Test DeleteKioskApplicationList with proxy not connected
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, DeleteKioskApplicationList_0100, TestSize.Level1)
+{
+    client_->proxy_ = nullptr;
+    EXPECT_CALL(*mockSystemAbility_, GetSystemAbility(testing::_)).WillRepeatedly(Return(nullptr));
+
+    std::vector<std::string> appList = {"com.ohos.test1"};
+    auto ret = client_->DeleteKioskApplicationList(appList);
+    EXPECT_EQ(ret, ABILITY_SERVICE_NOT_CONNECTED);
+}
+
+/**
+ * @tc.name: DeleteKioskApplicationList_0200
+ * @tc.desc: Test DeleteKioskApplicationList with proxy connected and arguments forwarded
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, DeleteKioskApplicationList_0200, TestSize.Level1)
+{
+    client_->proxy_ = mock_;
+    std::vector<std::string> appList = {"com.ohos.test1", "com.ohos.test2"};
+    EXPECT_CALL(*mock_, DeleteKioskApplicationList(appList))
+        .Times(1)
+        .WillOnce(Return(ERR_OK));
+    auto ret = client_->DeleteKioskApplicationList(appList);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
+ * @tc.name: DeleteKioskApplicationList_0300
+ * @tc.desc: Test DeleteKioskApplicationList propagates downstream error code
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, DeleteKioskApplicationList_0300, TestSize.Level1)
+{
+    client_->proxy_ = mock_;
+    std::vector<std::string> appList = {"com.ohos.test1"};
+    EXPECT_CALL(*mock_, DeleteKioskApplicationList(testing::_))
+        .Times(1)
+        .WillOnce(Return(CHECK_PERMISSION_FAILED));
+    auto ret = client_->DeleteKioskApplicationList(appList);
+    EXPECT_EQ(ret, CHECK_PERMISSION_FAILED);
+}
+
+/**
+ * @tc.name: DeleteKioskApplicationList_0400
+ * @tc.desc: Test DeleteKioskApplicationList forwards an empty appList which clears the whole list
+ * @tc.type: FUNC
+ */
+HWTEST_F(AbilityManagerClientBranchThirdTest, DeleteKioskApplicationList_0400, TestSize.Level1)
+{
+    client_->proxy_ = mock_;
+    std::vector<std::string> appList;
+    EXPECT_CALL(*mock_, DeleteKioskApplicationList(appList))
+        .Times(1)
+        .WillOnce(Return(ERR_OK));
+    auto ret = client_->DeleteKioskApplicationList(appList);
+    EXPECT_EQ(ret, ERR_OK);
+}
+
+/**
  * @tc.name: ExecuteSkillDone_0100
  * @tc.desc: Test ExecuteSkillDone with proxy not connected
  * @tc.type: FUNC
