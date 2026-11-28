@@ -165,7 +165,6 @@ Ability_ChildProcessConfigs* OH_Ability_CreateChildProcessConfigs();
  *
  * @param configs Pointer to the child process configs object to be destroyed.
  * After this call, the pointer becomes invalid and must not be used.
- * Set the pointer to nullptr after calling this function to avoid a double free.
  * @return Returns {@link NCP_NO_ERROR} if the operation is successful.
  *         Returns {@link NCP_ERR_INVALID_PARAM} if the input parameters are invalid.
  * @since 20

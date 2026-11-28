@@ -52,6 +52,7 @@ Ability_NativeChildProcess_ErrCode OH_Ability_DestroyChildProcessConfigs(Ability
         return NCP_ERR_INVALID_PARAM;
     }
     delete configs;
+    configs = nullptr;
     return NCP_NO_ERROR;
 }
 
