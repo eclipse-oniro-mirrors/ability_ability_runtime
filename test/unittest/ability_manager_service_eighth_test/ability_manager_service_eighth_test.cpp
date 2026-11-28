@@ -44,7 +44,6 @@ constexpr char PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED[] = "const.product.ent
 constexpr char PRODUCT_APPBOOT_SETTING_ENABLED[] = "const.product.appboot.setting.enabled";
 constexpr int32_t FOUNDATION_UID = 5523;
 constexpr uint32_t TEST_FLAG_ABILITY_CONTINUATION = 0x00000008;
-constexpr int32_t TEST_U0_USER_ID = 0;
 constexpr int32_t ONE = 1;
 constexpr int32_t TWO = 2;
 constexpr int32_t DLP_APP_INDEX = 1001;

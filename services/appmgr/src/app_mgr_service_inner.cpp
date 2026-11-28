@@ -10933,31 +10933,45 @@ void AppMgrServiceInner::ClearNonResidentKeepAliveAppRunningData(const std::shar
     }
 
     auto userId = GetUserIdByUid(appRecord->GetUid());
-    bool isCurentUserId = UserController::GetInstance().IsForegroundUser(userId);
+    // The user is currently active (attached to a display). Multi-foreground-user mode
+    // allows several active users at the same time, so there is no single foreground user.
+    bool isActiveUser = UserController::GetInstance().IsForegroundUser(userId);
     bool isDefaultInstance = appRecord->GetInstanceKey().empty() || appRecord->GetInstanceKey() == APP_INSTANCE_KEY_0;
-    if (!appRecord->GetRestartAppFlag() && (appRecord->IsKeepAliveDkv() || appRecord->IsKeepAliveAppService()) &&
-        isDefaultInstance && (userId == 0 || userId == 1 || isCurentUserId) &&
-        appRecord->GetBundleName() != SCENE_BOARD_BUNDLE_NAME) {
-        if (ExitResidentProcessManager::GetInstance().IsKilledForUpgradeWeb(appRecord->GetBundleName())) {
-            TAG_LOGI(AAFwkTag::APPMGR, "is killed for upgrade web");
-            return;
-        }
+    if (appRecord->GetRestartAppFlag() ||
+        !(appRecord->IsKeepAliveDkv() || appRecord->IsKeepAliveAppService()) ||
+        !isDefaultInstance || appRecord->GetBundleName() == SCENE_BOARD_BUNDLE_NAME) {
+        TAG_LOGD(AAFwkTag::APPMGR, "not keep_alive restart, restartAppFlag: %{public}d, isKeepAliveDkv: %{public}d, "
+            "isKeepAliveAppService: %{public}d, isDefaultInstance: %{public}d, bundleName: %{public}s",
+            appRecord->GetRestartAppFlag(), appRecord->IsKeepAliveDkv(), appRecord->IsKeepAliveAppService(),
+            isDefaultInstance, appRecord->GetBundleName().c_str());
+        return;
+    }
+    if (ExitResidentProcessManager::GetInstance().IsKilledForUpgradeWeb(appRecord->GetBundleName())) {
+        TAG_LOGI(AAFwkTag::APPMGR, "is killed for upgrade web");
+        return;
+    }
+    auto restartProcess = [appRecord, innerService = shared_from_this()]() {
+        TAG_LOGI(AAFwkTag::APPMGR, "restarting keep-alive process.");
+        innerService->RestartKeepAliveProcess(appRecord);
+    };
+    if (taskHandler_ == nullptr) {
+        TAG_LOGE(AAFwkTag::APPMGR, "taskHandler_ null");
+        return;
+    }
+    if (userId == U0_USER_ID || userId == U1_USER_ID || isActiveUser) {
         if (!IsMemorySizeSufficient()) {
             TAG_LOGI(AAFwkTag::APPMGR, "memory size insufficient");
             return;
         }
-        TAG_LOGI(AAFwkTag::APPMGR, "memory size sufficient");
-        auto restartProcess = [appRecord, innerService = shared_from_this()]() {
-            TAG_LOGI(AAFwkTag::APPMGR, "restarting keep-alive process.");
-            innerService->RestartKeepAliveProcess(appRecord);
-        };
-        if (taskHandler_ == nullptr) {
-            TAG_LOGE(AAFwkTag::APPMGR, "taskHandler_ null");
-            return;
-        }
         TAG_LOGI(AAFwkTag::APPMGR, "submit restart keep-alive process task.");
         taskHandler_->SubmitTask(restartProcess, "RestartKeepAliveProcess");
+        return;
     }
+    // Keep-alive apps of non-U0/U1 inactive users are not restarted here.
+    // Notify through the existing channel to register the uid, so that the process is restarted
+    // when the user becomes active again.
+    TAG_LOGI(AAFwkTag::APPMGR, "register delayed restart for inactive user keep-alive, userId: %{public}d", userId);
+    taskHandler_->SubmitTask(restartProcess, "RegisterBackgroundKeepAliveRestart");
 }
 
 int32_t AppMgrServiceInner::NotifyPageShow(const sptr<IRemoteObject> &token, const PageStateData &pageStateData)

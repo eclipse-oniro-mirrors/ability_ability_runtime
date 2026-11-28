@@ -2737,5 +2737,138 @@ HWTEST_F(AppMgrServiceInnerNinthTest, CancelDelayedExitTask_0400, TestSize.Level
     AAFwk::MyStatus::GetInstance().getAppRunningRecordByPid_ = nullptr;
     TAG_LOGI(AAFwkTag::TEST, "CancelDelayedExitTask_0400 end");
 }
+
+/**
+ * @tc.name: ClearNonResidentKeepAliveAppRunningData_001
+ * @tc.desc: Test ClearNonResidentKeepAliveAppRunningData with null appRecord
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerNinthTest, ClearNonResidentKeepAliveAppRunningData_001, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ClearNonResidentKeepAliveAppRunningData_001 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    appMgrServiceInner->ClearNonResidentKeepAliveAppRunningData(nullptr);
+    TAG_LOGI(AAFwkTag::TEST, "ClearNonResidentKeepAliveAppRunningData_001 end");
+}
+
+/**
+ * @tc.name: ClearNonResidentKeepAliveAppRunningData_002
+ * @tc.desc: restartAppFlag is set, should not submit any restart task
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerNinthTest, ClearNonResidentKeepAliveAppRunningData_002, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ClearNonResidentKeepAliveAppRunningData_002 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    auto taskHandler =
+        std::make_shared<AAFwk::MockTaskHandlerWrapForRestart>("ClearNonResidentKeepAliveTest002");
+    appMgrServiceInner->taskHandler_ = taskHandler;
+
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    applicationInfo->name = "test.app.name";
+    applicationInfo->bundleName = "test.bundle.name";
+    auto appRecord = std::make_shared<AppRunningRecord>(applicationInfo, 1, "test_process");
+    ASSERT_NE(appRecord, nullptr);
+    appRecord->SetKeepAliveDkv(true);
+    appRecord->SetRestartAppFlag(true);
+
+    appMgrServiceInner->ClearNonResidentKeepAliveAppRunningData(appRecord);
+    EXPECT_EQ(taskHandler->submitTaskCalledCount_, 0);
+    TAG_LOGI(AAFwkTag::TEST, "ClearNonResidentKeepAliveAppRunningData_002 end");
+}
+
+/**
+ * @tc.name: ClearNonResidentKeepAliveAppRunningData_003
+ * @tc.desc: appRecord is not keep-alive, should not submit any restart task
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerNinthTest, ClearNonResidentKeepAliveAppRunningData_003, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ClearNonResidentKeepAliveAppRunningData_003 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    auto taskHandler =
+        std::make_shared<AAFwk::MockTaskHandlerWrapForRestart>("ClearNonResidentKeepAliveTest003");
+    appMgrServiceInner->taskHandler_ = taskHandler;
+
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    applicationInfo->name = "test.app.name";
+    applicationInfo->bundleName = "test.bundle.name";
+    auto appRecord = std::make_shared<AppRunningRecord>(applicationInfo, 1, "test_process");
+    ASSERT_NE(appRecord, nullptr);
+
+    appMgrServiceInner->ClearNonResidentKeepAliveAppRunningData(appRecord);
+    EXPECT_EQ(taskHandler->submitTaskCalledCount_, 0);
+    TAG_LOGI(AAFwkTag::TEST, "ClearNonResidentKeepAliveAppRunningData_003 end");
+}
+
+/**
+ * @tc.name: ClearNonResidentKeepAliveAppRunningData_004
+ * @tc.desc: keep-alive app of user 0 should submit the immediate restart task
+ *           when memory size is sufficient
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerNinthTest, ClearNonResidentKeepAliveAppRunningData_004, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ClearNonResidentKeepAliveAppRunningData_004 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    auto taskHandler =
+        std::make_shared<AAFwk::MockTaskHandlerWrapForRestart>("ClearNonResidentKeepAliveTest004");
+    appMgrServiceInner->taskHandler_ = taskHandler;
+
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    applicationInfo->name = "test.app.name";
+    applicationInfo->bundleName = "test.bundle.name";
+    auto appRecord = std::make_shared<AppRunningRecord>(applicationInfo, 1, "test_process");
+    ASSERT_NE(appRecord, nullptr);
+    // The mocked record returns the configured uid value: uid 100 means user 0.
+    AAFwk::MyStatus::GetInstance().getUidMockValue_ = 100;
+    // Memory is sufficient, so the immediate restart task can be submitted.
+    AAFwk::MyStatus::GetInstance().isMemorySizeSufficient_ = true;
+    appRecord->SetKeepAliveDkv(true);
+
+    appMgrServiceInner->ClearNonResidentKeepAliveAppRunningData(appRecord);
+    EXPECT_GT(taskHandler->submitTaskCalledCount_, 0);
+    // Restore the mock defaults so later cases in the same process are not affected.
+    AAFwk::MyStatus::GetInstance().getUidMockValue_ = 0;
+    AAFwk::MyStatus::GetInstance().isMemorySizeSufficient_ = false;
+    TAG_LOGI(AAFwkTag::TEST, "ClearNonResidentKeepAliveAppRunningData_004 end");
+}
+
+/**
+ * @tc.name: ClearNonResidentKeepAliveAppRunningData_005
+ * @tc.desc: keep-alive app of a non-U0/U1 background user, should submit the
+ *           delayed restart registration task instead of dropping it
+ * @tc.type: FUNC
+ */
+HWTEST_F(AppMgrServiceInnerNinthTest, ClearNonResidentKeepAliveAppRunningData_005, TestSize.Level1)
+{
+    TAG_LOGI(AAFwkTag::TEST, "ClearNonResidentKeepAliveAppRunningData_005 start");
+    auto appMgrServiceInner = std::make_shared<AppMgrServiceInner>();
+    ASSERT_NE(appMgrServiceInner, nullptr);
+    auto taskHandler =
+        std::make_shared<AAFwk::MockTaskHandlerWrapForRestart>("ClearNonResidentKeepAliveTest005");
+    appMgrServiceInner->taskHandler_ = taskHandler;
+
+    auto applicationInfo = std::make_shared<ApplicationInfo>();
+    applicationInfo->name = "test.app.name";
+    applicationInfo->bundleName = "test.bundle.name";
+    auto appRecord = std::make_shared<AppRunningRecord>(applicationInfo, 1, "test_process");
+    ASSERT_NE(appRecord, nullptr);
+    // The mocked record returns the configured uid value: uid 20000100 means
+    // user 100, which is neither U0/U1 nor an active user, so the delayed
+    // restart registration task is submitted.
+    AAFwk::MyStatus::GetInstance().getUidMockValue_ = 20000100;
+    appRecord->SetKeepAliveAppService(true);
+
+    appMgrServiceInner->ClearNonResidentKeepAliveAppRunningData(appRecord);
+    EXPECT_GT(taskHandler->submitTaskCalledCount_, 0);
+    // Restore the mock default so later cases in the same process are not affected.
+    AAFwk::MyStatus::GetInstance().getUidMockValue_ = 0;
+    TAG_LOGI(AAFwkTag::TEST, "ClearNonResidentKeepAliveAppRunningData_005 end");
+}
 }  // namespace AppExecFwk
 }  // namespace OHOS

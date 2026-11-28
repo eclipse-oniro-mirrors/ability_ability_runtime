@@ -110,6 +110,8 @@ public:
     bool getBoolParameter_ = false;
     // app running record
     int32_t getAppIndex_ = 0;
+    // The mocked record GetUid returns this value; default 0 keeps the legacy behavior.
+    int32_t getUidMockValue_ = 0;
     int scheduleAcceptCall_ = 0;
     std::shared_ptr<AppExecFwk::ModuleRunningRecord> getModuleRecord_ = nullptr;
     int addModulesCall_;
@@ -139,6 +141,7 @@ public:
     ErrCode handleMemorySizeInSufficent_ = ERR_OK;
     ErrCode handleRequireBigMemoryOptimization_ = ERR_OK;
     ErrCode handleNoRequireBigMemoryOptimization_ = ERR_OK;
+    bool isMemorySizeSufficient_ = false;
     // preload related
     bool allowPreload_ = true;
     int32_t generatePreloadRequestRet_ = ERR_OK;

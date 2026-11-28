@@ -3815,6 +3815,21 @@ private:
         std::map<int32_t, std::vector<AppExecFwk::BundleInfo>> &bundleInfosMap,
         std::vector<AppExecFwk::BundleInfo> &bundleInfosForU1);
 
+    /**
+     * Restart keep-alive processes for the classified bundle infos. When the
+     * keep-alive app died by pid, the restart is scheduled through the time
+     * sequence task; otherwise the main element is restarted per active user in
+     * reverse order, and user 1 app service extensions are restarted afterwards.
+     *
+     * @param userId, The current foreground user ID.
+     * @param diedPid, The pid of the died process, or the invalid pid.
+     * @param bundleInfosMap, Classified bundle infos per active user.
+     * @param bundleInfosForU1, Classified bundle infos of user 1.
+     */
+    void RestartKeepAliveForUsers(int32_t userId, pid_t diedPid,
+        std::map<int32_t, std::vector<AppExecFwk::BundleInfo>> &bundleInfosMap,
+        std::vector<AppExecFwk::BundleInfo> &bundleInfosForU1);
+
     struct StartSelfUIAbilityParam {
         Want want;
         StartOptions options;

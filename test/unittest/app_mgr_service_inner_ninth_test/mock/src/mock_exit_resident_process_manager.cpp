@@ -30,7 +30,7 @@ ExitResidentProcessManager &ExitResidentProcessManager::GetInstance()
 
 bool ExitResidentProcessManager::IsMemorySizeSufficient() const
 {
-    return false;
+    return AAFwk::MyStatus::GetInstance().isMemorySizeSufficient_;
 }
 
 bool ExitResidentProcessManager::IsNoRequireBigMemory() const

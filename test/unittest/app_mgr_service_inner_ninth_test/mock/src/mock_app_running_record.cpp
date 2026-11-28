@@ -141,7 +141,7 @@ const std::string &AppRunningRecord::GetCustomProcessFlag() const
 int32_t AppRunningRecord::GetUid() const
 {
     AAFwk::MyStatus::GetInstance().getUidCalled_ = true;
-    return 0;
+    return AAFwk::MyStatus::GetInstance().getUidMockValue_;
 }
 
 void AppRunningRecord::SetUid(const int32_t uid)

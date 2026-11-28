@@ -10657,6 +10657,8 @@ void AbilityManagerService::StartResidentApps(int32_t userId)
 void AbilityManagerService::StartKeepAliveApps(int32_t userId)
 {
     if (!system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false)) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "not support enterprise feature, skip start keep-alive apps, userId: %{public}d",
+            userId);
         return;
     }
     TAG_LOGI(AAFwkTag::ABILITYMGR, "StartKeepAliveApps %{public}d", userId);
@@ -17358,6 +17360,8 @@ void AbilityManagerService::NotifyStartKeepAliveProcess(std::vector<AppExecFwk::
     pid_t diedPid)
 {
     if (!system::GetBoolParameter(PRODUCT_ENTERPRISE_FEATURE_SETTING_ENABLED, false)) {
+        TAG_LOGD(AAFwkTag::ABILITYMGR, "not support enterprise feature, skip restart keep-alive process, "
+            "diedPid: %{public}d, size: %{public}zu", diedPid, bundleInfos.size());
         return;
     }
     auto userId =
@@ -17366,30 +17370,15 @@ void AbilityManagerService::NotifyStartKeepAliveProcess(std::vector<AppExecFwk::
         "foregroundUserId: %{public}d", diedPid, bundleInfos.size(), userId);
     std::map<int32_t, std::vector<AppExecFwk::BundleInfo>> bundleInfosMap;
     std::vector<AppExecFwk::BundleInfo> bundleInfosForU1;
-    for (const auto &item: bundleInfos) {
-        auto user = item.uid / BASE_USER_RANGE;
-        if (KeepAliveProcessManager::GetInstance().KeepAliveIsRestartAfterUpdate(item.uid) &&
-            (user == U1_USER_ID ||
-            AbilityRuntime::UserController::GetInstance().IsForegroundUser(user))) {
-            TAG_LOGI(AAFwkTag::APPMGR, "KeepAliveIsRestartAfterUpdate uid: %{public}d", item.uid);
-            continue;
-        }
-        if (user == U1_USER_ID) {
-            bundleInfosForU1.push_back(item);
-        } else if (AbilityRuntime::UserController::GetInstance().IsForegroundUser(user)) {
-            auto search = bundleInfosMap.find(user);
-            if (search != bundleInfosMap.end()) {
-                search->second.push_back(item);
-            } else {
-                std::vector<AppExecFwk::BundleInfo> bundleInfosForCurrentUser;
-                bundleInfosForCurrentUser.push_back(item);
-                bundleInfosMap.emplace(user, bundleInfosForCurrentUser);
-            }
-        } else {
-            TAG_LOGI(AAFwkTag::ABILITYMGR, "keepAlive not U1 or current user, uid: %{public}d", item.uid);
-            KeepAliveProcessManager::GetInstance().AddNeedRestartKeepAliveUid(item.uid);
-        }
-    }
+    KeepAliveProcessManager::GetInstance().ClassifyNeedRestartBundleInfos(bundleInfos, bundleInfosMap,
+        bundleInfosForU1);
+    RestartKeepAliveForUsers(userId, diedPid, bundleInfosMap, bundleInfosForU1);
+}
+
+void AbilityManagerService::RestartKeepAliveForUsers(int32_t userId, pid_t diedPid,
+    std::map<int32_t, std::vector<AppExecFwk::BundleInfo>> &bundleInfosMap,
+    std::vector<AppExecFwk::BundleInfo> &bundleInfosForU1)
+{
     if (diedPid != AppExecFwk::INVALID_DIED_PID) {
         TimeSequenceKeepAliveRestart(userId, diedPid, bundleInfosMap, bundleInfosForU1);
         return;
