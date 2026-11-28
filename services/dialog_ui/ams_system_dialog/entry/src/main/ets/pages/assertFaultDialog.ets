@@ -27,12 +27,16 @@ const DEBUG_ASSERT_RESULT: string = 'assertResult';
 @Component
 struct AssertFaultDialog {
   @State private textDetail: string = '';
-  @State private foldable: boolean = display.isFoldable();
+  @State private foldable: boolean = false;
   @State private isFullyExpanded: boolean = false;
 
   private foldStatusCallback: (data: display.FoldStatus) => void = (data: display.FoldStatus) => {
-    this.isFullyExpanded = (data === display.FoldStatus.FOLD_STATUS_EXPANDED_WITH_SECOND_EXPANDED);
-    console.info(TAG, `Fold status changed: ${data}, isFullyExpanded: ${this.isFullyExpanded}`);
+    try {
+      this.isFullyExpanded = (data === display.FoldStatus.FOLD_STATUS_EXPANDED_WITH_SECOND_EXPANDED);
+      console.info(TAG, `Fold status changed: ${data}, isFullyExpanded: ${this.isFullyExpanded}`);
+    } catch (error) {
+      console.error(TAG, `foldStatusCallback failed, error: ${JSON.stringify(error)}`);
+    }
   }
 
   private showDialog(): void {
@@ -117,13 +121,34 @@ struct AssertFaultDialog {
   aboutToAppear() {
     console.info(TAG, 'dialog page appears');
     this.textDetail = storage.get<string>('textDetail');
-    display.on('foldStatusChange', this.foldStatusCallback);
-    this.isFullyExpanded = (display.getFoldStatus() === display.FoldStatus.FOLD_STATUS_EXPANDED_WITH_SECOND_EXPANDED)
+    try {
+      this.foldable = display.isFoldable();
+    } catch (error) {
+      console.error(TAG, `display.isFoldable failed, error: ${JSON.stringify(error)}`);
+      return;
+    }
+    try {
+      display.on('foldStatusChange', this.foldStatusCallback);
+    } catch (error) {
+      console.error(TAG, `display.on foldStatusChange failed, error: ${JSON.stringify(error)}`);
+      return;
+    }
+    try {
+      this.isFullyExpanded =
+        (display.getFoldStatus() === display.FoldStatus.FOLD_STATUS_EXPANDED_WITH_SECOND_EXPANDED);
+    } catch (error) {
+      console.error(TAG, `display.getFoldStatus failed, error: ${JSON.stringify(error)}`);
+      return;
+    }
     this.showDialog();
   }
 
   aboutToDisappear() {
-    display.off('foldStatusChange', this.foldStatusCallback);
+    try {
+      display.off('foldStatusChange', this.foldStatusCallback);
+    } catch (error) {
+      console.error(TAG, `display.off foldStatusChange failed, error: ${JSON.stringify(error)}`);
+    }
   }
 
   existApp() {

@@ -135,11 +135,16 @@ int32_t AgentCardMgr::HandleBundleInstall(const std::string &bundleName, const B
                 return AAFwk::INNER_ERR;
             }
             json j = json::parse(profileInfo, nullptr, false, true);
-            if (!j.contains("agentCards")) {
-                TAG_LOGE(AAFwkTag::SER_ROUTER, "profileInfo is not contains agentCards");
+            if (!j.is_object() || !j.contains("agentCards")) {
+                TAG_LOGE(AAFwkTag::SER_ROUTER, "profileInfo is not valid object or contains no agentCards");
                 return AAFwk::INNER_ERR;
             }
-            for (auto cardStr : j["agentCards"]) {
+            const auto &agentCardsJson = j["agentCards"];
+            if (!agentCardsJson.is_array()) {
+                TAG_LOGE(AAFwkTag::SER_ROUTER, "agentCards is not an array");
+                return AAFwk::INNER_ERR;
+            }
+            for (const auto &cardStr : agentCardsJson) {
                 if (static_cast<int32_t>(incomingCardMap.size()) >= MAX_AGENT_CARD_SIZE) {
                     break;
                 }
@@ -326,12 +331,16 @@ void AgentCardMgr::MigrateBundleEntry(const nlohmann::json &bundleEntry, int32_t
         !bundleEntry.contains("userId") || !bundleEntry.contains("cards")) {
         return;
     }
-    std::string bundleName = bundleEntry.at("bundleName").get<std::string>();
-    int32_t userId = bundleEntry.at("userId").get<int32_t>();
+    const auto &bundleNameJson = bundleEntry.at("bundleName");
+    const auto &userIdJson = bundleEntry.at("userId");
     const auto &cardsArray = bundleEntry.at("cards");
-    if (!cardsArray.is_array() || cardsArray.empty()) {
+    if (!bundleNameJson.is_string() || !userIdJson.is_number_integer() ||
+        !cardsArray.is_array() || cardsArray.empty()) {
+        TAG_LOGE(AAFwkTag::SER_ROUTER, "invalid migration bundle entry field type");
         return;
     }
+    std::string bundleName = bundleNameJson.get<std::string>();
+    int32_t userId = userIdJson.get<int32_t>();
 
     std::vector<StoredAgentCardEntry> entries;
     std::lock_guard<std::mutex> lock(cardDataMutex_);
